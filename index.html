@@ -6,152 +6,257 @@
   <title>April 2026 Bill Increase Explainer</title>
   <style>
     :root {
-      --bg: #f7f8fb;
+      --bg: #f6f7f9;
       --card: #ffffff;
-      --text: #1f2937;
+      --card-soft: #f9fafb;
+      --text: #111827;
       --muted: #6b7280;
-      --border: #d1d5db;
+      --border: #d9dee8;
       --accent: #1d4ed8;
-      --error: #b91c1c;
-      --error-bg: #fef2f2;
+      --accent-hover: #1e40af;
+      --danger: #b42318;
+      --danger-hover: #912018;
+      --focus: #93c5fd;
+      --error: #b42318;
+      --error-bg: #fff5f5;
+      --shadow: 0 8px 22px rgba(17, 24, 39, 0.06);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
       color: var(--text);
       background: var(--bg);
+      line-height: 1.4;
     }
 
-    header {
-      max-width: 980px;
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(246, 247, 249, 0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(4px);
+    }
+
+    .wrap {
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 1rem;
+      padding: 0 1rem;
+    }
+
+    .site-header .wrap {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
+      min-height: 64px;
+      gap: 0.8rem;
     }
 
     h1 {
-      font-size: 1.4rem;
       margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
     }
 
     .source-link {
       color: var(--accent);
       text-decoration: none;
-      font-size: 0.9rem;
+      font-weight: 600;
+      font-size: 0.92rem;
       white-space: nowrap;
     }
 
-    main {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 1rem 1rem;
+    .source-link:hover { text-decoration: underline; }
+
+    main.wrap {
       display: grid;
       gap: 1rem;
+      padding-top: 1rem;
+      padding-bottom: 1rem;
     }
 
     .panel {
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 14px;
       background: var(--card);
+      box-shadow: var(--shadow);
       padding: 1rem;
     }
 
-    h2 { margin: 0 0 0.75rem; font-size: 1.1rem; }
+    .panel h2 {
+      margin: 0 0 0.8rem;
+      font-size: 1.06rem;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      background: var(--card-soft);
+    }
 
     table {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 0.92rem;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.89rem;
+      min-width: 1080px;
+      background: var(--card);
     }
 
-    th, td {
+    th,
+    td {
+      padding: 0.5rem;
       border-bottom: 1px solid var(--border);
-      padding: 0.45rem;
-      text-align: left;
+      border-right: 1px solid var(--border);
       vertical-align: top;
     }
 
-    th { background: #f3f4f6; }
+    th:last-child,
+    td:last-child { border-right: 0; }
 
-    input, select, button {
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f2f5fb;
+      z-index: 2;
+      font-weight: 700;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) { background: #fbfcfe; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    input,
+    select,
+    button {
       font: inherit;
     }
 
-    input[type="text"], input[type="number"], select {
+    input[type="text"],
+    input[type="number"],
+    select {
       width: 100%;
+      height: 2.2rem;
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.42rem;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.45rem 0.7rem;
+      border-radius: 8px;
+      padding: 0.45rem 0.55rem;
       background: #fff;
-      cursor: pointer;
-      font-weight: 600;
+      color: var(--text);
     }
 
-    button.primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 1px;
+      border-color: #60a5fa;
+    }
+
+    .price,
+    .qty { text-align: right; }
+
+    .computed {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.84rem;
+      color: #4b5563;
+      white-space: nowrap;
+      min-width: 90px;
+      display: inline-block;
     }
 
     .toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
+      gap: 0.55rem;
+      margin-top: 0.85rem;
     }
 
-    .error {
-      font-size: 0.78rem;
-      margin-top: 0.2rem;
-      color: var(--error);
-      display: none;
+    button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.78rem;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    button:hover { background: #f8fafc; }
+
+    .primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .danger {
+      background: #fff;
+      border-color: #f0b5af;
+      color: var(--danger);
+      padding: 0.35rem 0.55rem;
+      font-size: 0.8rem;
+    }
+
+    .danger:hover {
+      background: #fff6f6;
+      color: var(--danger-hover);
+      border-color: #e38f84;
     }
 
     .invalid {
-      border-color: var(--error) !important;
-      background: var(--error-bg);
+      border-color: #e28b82 !important;
+      background: var(--error-bg) !important;
+    }
+
+    .error {
+      margin-top: 0.23rem;
+      font-size: 0.75rem;
+      color: var(--error);
+      display: none;
     }
 
     .totals {
       display: grid;
       grid-template-columns: repeat(3, minmax(120px, 1fr));
-      gap: 0.5rem;
-      margin-top: 0.9rem;
+      gap: 0.65rem;
+      margin-top: 0.5rem;
     }
 
     .total-box {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.6rem;
-      background: #fafafa;
+      border-radius: 10px;
+      padding: 0.65rem;
+      background: #fcfcfd;
     }
 
-    #rowSummary {
-      margin: 0.8rem 0 0;
-      padding-left: 1rem;
-      font-size: 0.88rem;
+    .total-box strong {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
     }
 
-    #rowSummary li {
-      margin-bottom: 0.25rem;
+    .total-box div {
+      font-size: 1.12rem;
+      font-weight: 700;
     }
 
     footer {
-      max-width: 980px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 0 1rem 1.25rem;
+      padding: 0 1rem 1.2rem;
       color: var(--muted);
       font-size: 0.85rem;
     }
@@ -177,31 +282,43 @@
     }
 
     @media (max-width: 860px) {
-      table { display: block; overflow-x: auto; }
+      .totals { grid-template-columns: 1fr; }
+      .site-header .wrap { min-height: 58px; }
+      h1 { font-size: 1.06rem; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>April 2026 Bill Increase Explainer</h1>
-    <a class="source-link" href="https://xlngroup.sharepoint.com/sites/Lighthouse/SitePages/Initiatives%20%26%20Acquisitions/Price%20Increases/Price%20Increase%20April%202026.aspx" target="_blank" rel="noopener noreferrer">Lighthouse (source)</a>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>April 2026 Bill Increase Explainer</h1>
+      <a class="source-link" href="https://xlngroup.sharepoint.com/sites/Lighthouse/SitePages/Initiatives%20%26%20Acquisitions/Price%20Increases/Price%20Increase%20April%202026.aspx" target="_blank" rel="noopener noreferrer">Lighthouse (source)</a>
+    </div>
   </header>
 
-  <main>
+  <main class="wrap">
     <section class="panel">
       <h2>Add services</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Service type</th>
-            <th>Description</th>
-            <th>Current monthly charge (£)</th>
-            <th>Quantity</th>
-            <th>Remove</th>
-          </tr>
-        </thead>
-        <tbody id="serviceRows"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Number/CLI</th>
+              <th>Service type</th>
+              <th>Current monthly charge (£)</th>
+              <th>Qty</th>
+              <th>Before (unit)</th>
+              <th>After (unit)</th>
+              <th>Diff (unit)</th>
+              <th>Before (total)</th>
+              <th>After (total)</th>
+              <th>Diff (total)</th>
+              <th>Remove</th>
+            </tr>
+          </thead>
+          <tbody id="serviceRows"></tbody>
+        </table>
+      </div>
       <div class="toolbar">
         <button id="addRowBtn" type="button" class="primary">Add row</button>
         <button id="resetBtn" type="button">Reset</button>
@@ -215,7 +332,6 @@
         <div class="total-box"><strong>Total after</strong><div id="totalAfter">£0.00</div></div>
         <div class="total-box"><strong>Difference</strong><div id="totalDiff">£0.00</div></div>
       </div>
-      <ul id="rowSummary"></ul>
       <div class="toolbar">
         <button id="copyExplanationBtn" type="button">Copy explanation</button>
       </div>
@@ -230,6 +346,7 @@
 
   <script>
     const SERVICE_TYPES = [
+      { id: '', label: 'Select service type' },
       { id: 'wlr', label: 'WLR Line (Single/Multi) – line only (+£12.50)', kind: 'flat' },
       { id: 'isdn', label: 'ISDN2 / ISDN30 – per line (+£12.50)', kind: 'flat' },
       { id: 'maintenance', label: 'Maintenance (+20%)', kind: 'percent', numerator: 1200 },
@@ -242,7 +359,6 @@
     const totalBeforeEl = document.getElementById('totalBefore');
     const totalAfterEl = document.getElementById('totalAfter');
     const totalDiffEl = document.getElementById('totalDiff');
-    const rowSummaryEl = document.getElementById('rowSummary');
     const toastEl = document.getElementById('toast');
 
     function poundsToPence(str) {
@@ -270,73 +386,124 @@
     }
 
     function createServiceOptions() {
-      return SERVICE_TYPES.map((s) => `<option value="${s.id}">${s.label}</option>`).join('');
+      return SERVICE_TYPES.map((s, i) => `<option value="${s.id}" ${i === 0 ? 'selected' : ''}>${s.label}</option>`).join('');
+    }
+
+    function computedCell(value = '—') {
+      return `<span class="computed">${value}</span>`;
     }
 
     function addRow() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><select class="serviceType" required>${createServiceOptions()}</select></td>
-        <td><input class="description" type="text" placeholder="Optional" /></td>
+        <td><input class="cli" type="text" placeholder="0161… / CLI" /></td>
+        <td>
+          <select class="serviceType" required>${createServiceOptions()}</select>
+          <div class="error serviceError">Select a service</div>
+        </td>
         <td>
           <input class="price" type="text" inputmode="decimal" placeholder="0.00" />
-          <div class="error">Enter a price</div>
+          <div class="error priceError">Enter a valid price</div>
         </td>
         <td><input class="qty" type="number" min="1" step="1" value="1" /></td>
-        <td><button type="button" class="removeBtn">Remove</button></td>
+        <td data-field="beforeUnit">${computedCell()}</td>
+        <td data-field="afterUnit">${computedCell()}</td>
+        <td data-field="diffUnit">${computedCell()}</td>
+        <td data-field="beforeTotal">${computedCell()}</td>
+        <td data-field="afterTotal">${computedCell()}</td>
+        <td data-field="diffTotal">${computedCell()}</td>
+        <td><button type="button" class="removeBtn danger">Remove</button></td>
       `;
       rowsEl.appendChild(tr);
+    }
+
+    function setComputedRow(row, model) {
+      const setField = (key, value) => {
+        const cell = row.querySelector(`[data-field="${key}"] .computed`);
+        if (cell) cell.textContent = value;
+      };
+
+      if (!model.complete) {
+        ['beforeUnit', 'afterUnit', 'diffUnit', 'beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
+        return;
+      }
+
+      setField('beforeUnit', formatGBP(model.perUnitBeforePence));
+      setField('afterUnit', formatGBP(model.perUnitAfterPence));
+      setField('diffUnit', formatGBP(model.perUnitDiffPence));
+      setField('beforeTotal', formatGBP(model.totalBeforePence));
+      setField('afterTotal', formatGBP(model.totalAfterPence));
+      setField('diffTotal', formatGBP(model.totalDiffPence));
     }
 
     function recalc() {
       const rowEls = Array.from(rowsEl.querySelectorAll('tr'));
       let totalBefore = 0;
       let totalAfter = 0;
-      const summaryItems = [];
+      const cliValues = [];
 
       rowEls.forEach((row) => {
-        const serviceId = row.querySelector('.serviceType').value;
-        const label = SERVICE_TYPES.find((s) => s.id === serviceId)?.label || 'Service';
-        const description = row.querySelector('.description').value.trim();
+        const cli = row.querySelector('.cli').value.trim();
+        const serviceSelect = row.querySelector('.serviceType');
+        const serviceId = serviceSelect.value;
         const priceInput = row.querySelector('.price');
         const qtyInput = row.querySelector('.qty');
-        const errorEl = row.querySelector('.error');
+        const serviceError = row.querySelector('.serviceError');
+        const priceError = row.querySelector('.priceError');
 
-        const unitPence = poundsToPence(priceInput.value);
+        if (cli) cliValues.push(cli);
+
+        const perUnitBeforePence = poundsToPence(priceInput.value);
         const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
         qtyInput.value = qty;
 
-        if (unitPence === null) {
-          priceInput.classList.add('invalid');
-          errorEl.style.display = 'block';
+        const serviceMissing = !serviceId;
+        const priceMissing = perUnitBeforePence === null;
+
+        serviceSelect.classList.toggle('invalid', serviceMissing);
+        priceInput.classList.toggle('invalid', priceMissing);
+        serviceError.style.display = serviceMissing ? 'block' : 'none';
+        priceError.style.display = priceMissing ? 'block' : 'none';
+
+        if (serviceMissing || priceMissing) {
+          setComputedRow(row, { complete: false });
           return;
         }
 
-        priceInput.classList.remove('invalid');
-        errorEl.style.display = 'none';
+        const perUnitAfterPence = applyRule(perUnitBeforePence, serviceId);
+        const perUnitDiffPence = perUnitAfterPence - perUnitBeforePence;
+        const totalBeforePence = perUnitBeforePence * qty;
+        const totalAfterPence = perUnitAfterPence * qty;
+        const totalDiffPence = totalAfterPence - totalBeforePence;
 
-        const newUnitPence = applyRule(unitPence, serviceId);
-        const before = unitPence * qty;
-        const after = newUnitPence * qty;
-        const diff = after - before;
+        setComputedRow(row, {
+          complete: true,
+          perUnitBeforePence,
+          perUnitAfterPence,
+          perUnitDiffPence,
+          totalBeforePence,
+          totalAfterPence,
+          totalDiffPence
+        });
 
-        totalBefore += before;
-        totalAfter += after;
-
-        const shortLabel = description ? `${label} (${description})` : label;
-        summaryItems.push(`<li>${shortLabel}: ${formatGBP(before)} → ${formatGBP(after)} (Δ ${formatGBP(diff)})</li>`);
+        totalBefore += totalBeforePence;
+        totalAfter += totalAfterPence;
       });
 
+      const diff = totalAfter - totalBefore;
       totalBeforeEl.textContent = formatGBP(totalBefore);
       totalAfterEl.textContent = formatGBP(totalAfter);
-      totalDiffEl.textContent = formatGBP(totalAfter - totalBefore);
-      rowSummaryEl.innerHTML = summaryItems.join('');
+      totalDiffEl.textContent = formatGBP(diff);
 
-      return { totalBefore, totalAfter, diff: totalAfter - totalBefore };
+      return { totalBefore, totalAfter, diff, cliValues };
     }
 
     function buildExplanationText(totals) {
-      return `From April 2026 your monthly charges will change from ${formatGBP(totals.totalBefore)} to ${formatGBP(totals.totalAfter)} (an increase of ${formatGBP(totals.diff)}). Individual services may increase by either +£12.50 per line or by a percentage uplift (typically 6.9%), depending on the service.`;
+      let text = `From April 2026 your monthly charges will change from ${formatGBP(totals.totalBefore)} to ${formatGBP(totals.totalAfter)} (an increase of ${formatGBP(totals.diff)}). Individual services may increase by either +£12.50 per line or by a percentage uplift (typically 6.9%), depending on the service.`;
+      if (totals.cliValues.length > 0) {
+        text += ` Numbers/CLIs referenced: ${totals.cliValues.join(', ')}.`;
+      }
+      return text;
     }
 
     function showToast() {
