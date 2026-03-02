@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>April 2026 Price Increase Helper</title>
+  <title>April 2026 Bill Increase Explainer</title>
   <style>
     :root {
       --bg: #f7f8fb;
@@ -12,139 +12,57 @@
       --muted: #6b7280;
       --border: #d1d5db;
       --accent: #1d4ed8;
-      --warn-bg: #fff7ed;
-      --warn-border: #f59e0b;
-      --crit-bg: #fef2f2;
-      --crit-border: #dc2626;
-      --ok-bg: #ecfdf5;
-      --ok-border: #10b981;
+      --error: #b91c1c;
+      --error-bg: #fef2f2;
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: var(--bg);
       color: var(--text);
+      background: var(--bg);
     }
 
-    .sticky-top {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: #fff;
-      border-bottom: 1px solid var(--border);
-      padding: 0.75rem 1rem;
+    header {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin: 0;
     }
 
     .source-link {
-      display: inline-block;
-      font-weight: 700;
       color: var(--accent);
       text-decoration: none;
-      margin-bottom: 0.5rem;
-    }
-
-    .banner {
-      border: 1px solid var(--warn-border);
-      background: var(--warn-bg);
-      color: #7c2d12;
-      padding: 0.65rem 0.8rem;
-      border-radius: 8px;
-      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
     }
 
     main {
-      max-width: 1200px;
-      margin: 1rem auto 2rem;
-      padding: 0 1rem;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 1rem 1rem;
       display: grid;
       gap: 1rem;
     }
 
     .panel {
-      background: var(--card);
       border: 1px solid var(--border);
       border-radius: 10px;
+      background: var(--card);
       padding: 1rem;
     }
 
-    h1 { margin: 0 0 0.5rem; font-size: 1.4rem; }
     h2 { margin: 0 0 0.75rem; font-size: 1.1rem; }
-
-    .grid {
-      display: grid;
-      gap: 0.75rem;
-      grid-template-columns: repeat(12, 1fr);
-    }
-
-    .col-12 { grid-column: span 12; }
-    .col-6 { grid-column: span 6; }
-    .col-4 { grid-column: span 4; }
-    .col-3 { grid-column: span 3; }
-
-    label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin-bottom: 0.25rem;
-    }
-
-    input[type="text"], input[type="number"], input[type="date"], select, textarea {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.95rem;
-    }
-
-    .radio-group, .checkbox-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem 1rem;
-      align-items: center;
-      margin-top: 0.2rem;
-    }
-
-    .radio-group label, .checkbox-row label {
-      font-weight: 500;
-      margin-bottom: 0;
-      display: inline-flex;
-      gap: 0.35rem;
-      align-items: center;
-    }
-
-    .message {
-      margin-top: 0.45rem;
-      border: 1px solid;
-      border-radius: 6px;
-      padding: 0.45rem 0.55rem;
-      font-size: 0.88rem;
-    }
-    .warn { background: var(--warn-bg); border-color: var(--warn-border); color: #7c2d12; }
-    .critical { background: var(--crit-bg); border-color: var(--crit-border); color: #991b1b; }
-    .ok { background: var(--ok-bg); border-color: var(--ok-border); color: #065f46; }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      background: #fff;
-      border-radius: 6px;
-      padding: 0.45rem 0.7rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    button.primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
 
     table {
       width: 100%;
@@ -154,40 +72,61 @@
 
     th, td {
       border-bottom: 1px solid var(--border);
-      padding: 0.4rem;
+      padding: 0.45rem;
+      text-align: left;
       vertical-align: top;
     }
 
-    th {
-      text-align: left;
-      background: #f3f4f6;
-      position: sticky;
-      top: 0;
-      z-index: 1;
+    th { background: #f3f4f6; }
+
+    input, select, button {
+      font: inherit;
     }
 
-    .table-wrap {
-      overflow: auto;
-      max-height: 440px;
+    input[type="text"], input[type="number"], select {
+      width: 100%;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
+      padding: 0.42rem;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 0.2rem 0.45rem;
-      border-radius: 999px;
-      border: 1px solid #c7d2fe;
-      background: #eef2ff;
-      color: #3730a3;
+    button {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem 0.7rem;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .error {
       font-size: 0.78rem;
-      font-weight: 700;
-      margin-top: 0.15rem;
+      margin-top: 0.2rem;
+      color: var(--error);
+      display: none;
+    }
+
+    .invalid {
+      border-color: var(--error) !important;
+      background: var(--error-bg);
     }
 
     .totals {
       display: grid;
-      grid-template-columns: repeat(3, minmax(130px, 1fr));
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
       gap: 0.5rem;
       margin-top: 0.9rem;
     }
@@ -199,634 +138,258 @@
       background: #fafafa;
     }
 
-    .muted { color: var(--muted); font-size: 0.88rem; }
-    .hidden { display: none !important; }
-
-    pre {
-      white-space: pre-wrap;
-      background: #f9fafb;
-      border: 1px solid var(--border);
-      padding: 0.75rem;
-      border-radius: 8px;
-      max-height: 240px;
-      overflow: auto;
+    #rowSummary {
+      margin: 0.8rem 0 0;
+      padding-left: 1rem;
+      font-size: 0.88rem;
     }
 
-    @media (max-width: 900px) {
-      .col-6, .col-4, .col-3 { grid-column: span 12; }
-      th, td { min-width: 110px; }
+    #rowSummary li {
+      margin-bottom: 0.25rem;
+    }
+
+    footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 1rem 1.25rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .toast {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      background: #111827;
+      color: #fff;
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      font-size: 0.82rem;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 860px) {
+      table { display: block; overflow-x: auto; }
     }
   </style>
 </head>
 <body>
-  <div class="sticky-top">
-    <a class="source-link" href="https://xlngroup.sharepoint.com/sites/Lighthouse/SitePages/Initiatives%20%26%20Acquisitions/Price%20Increases/Price%20Increase%20April%202026.aspx" target="_blank" rel="noopener noreferrer">Open Lighthouse (source of truth)</a>
-    <div class="banner">Lighthouse is the source of truth. Use this tool to estimate and explain. Verify customer comms in Daisy Central.</div>
-  </div>
+  <header>
+    <h1>April 2026 Bill Increase Explainer</h1>
+    <a class="source-link" href="https://xlngroup.sharepoint.com/sites/Lighthouse/SitePages/Initiatives%20%26%20Acquisitions/Price%20Increases/Price%20Increase%20April%202026.aspx" target="_blank" rel="noopener noreferrer">Lighthouse (source)</a>
+  </header>
 
-  <main id="app">
+  <main>
     <section class="panel">
-      <h1>April 2026 Price Increase Helper</h1>
-      <p class="muted">CPI announced on 19 Feb 2026: <strong>3.0%</strong>. Default base increase (CPI + 3.9): <strong>6.9%</strong>.</p>
-      <div class="grid">
-        <div class="col-4">
-          <label>Customer Type</label>
-          <div class="radio-group" id="customerTypeGroup">
-            <label><input type="radio" name="customerType" value="MicroSME" checked /> MicroSME</label>
-            <label><input type="radio" name="customerType" value="Non-MicroSME" /> Non-MicroSME</label>
-            <label><input type="radio" name="customerType" value="Acquired / Altitude" /> Acquired / Altitude</label>
-          </div>
-        </div>
-        <div class="col-4">
-          <label>Services started</label>
-          <div class="radio-group" id="servicesStartedGroup">
-            <label><input type="radio" name="servicesStarted" value="Before 17 Jan 2025" checked /> Before 17 Jan 2025</label>
-            <label><input type="radio" name="servicesStarted" value="On/After 17 Jan 2025" /> On/After 17 Jan 2025</label>
-            <label><input type="radio" name="servicesStarted" value="Unknown" /> Unknown</label>
-          </div>
-          <div id="unknownServicesWarning" class="message warn hidden">Services start date is unknown. Verify in Lighthouse and Daisy Central.</div>
-        </div>
-        <div class="col-4">
-          <label for="billingStartDate">Billing start date</label>
-          <input id="billingStartDate" type="date" />
-          <div class="checkbox-row"><label><input id="billingStartUnknown" type="checkbox" /> Unknown</label></div>
-          <div id="billingWarning" class="message warn hidden"></div>
-        </div>
-
-        <div class="col-4">
-          <label>Price increase already applied?</label>
-          <div class="radio-group">
-            <label><input type="radio" name="alreadyApplied" value="No" checked /> No</label>
-            <label><input type="radio" name="alreadyApplied" value="Yes" /> Yes</label>
-          </div>
-          <div id="appliedWarning" class="message critical hidden">Cannot revert to pre-increase pricing after implementation.</div>
-        </div>
-
-        <div class="col-4">
-          <label>Base increase mode</label>
-          <div id="baseModeText" class="message ok"></div>
-        </div>
-
-        <div class="col-4" id="contractPctWrap">
-          <label for="contractualPct">Contractual % (for MicroSME on/after 17 Jan 2025)</label>
-          <input id="contractualPct" type="number" min="0" max="999" step="0.1" placeholder="e.g. 6.9" />
-          <div id="contractPctWarning" class="message warn hidden">Contractual uplift must be confirmed (Lighthouse/contract). Calculations shown as N/A for base-% items until entered.</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Services</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Description</th>
-              <th>Current monthly charge (£)</th>
-              <th>Qty</th>
-              <th>Rule applied</th>
-              <th>New per item</th>
-              <th>Before total</th>
-              <th>After total</th>
-              <th>Difference</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="serviceRows"></tbody>
-        </table>
-      </div>
+      <h2>Add services</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Service type</th>
+            <th>Description</th>
+            <th>Current monthly charge (£)</th>
+            <th>Quantity</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody id="serviceRows"></tbody>
+      </table>
       <div class="toolbar">
-        <button id="addRowBtn" type="button" class="primary">Add line item</button>
+        <button id="addRowBtn" type="button" class="primary">Add row</button>
         <button id="resetBtn" type="button">Reset</button>
-        <label><input id="saveSessionToggle" type="checkbox" /> Save session</label>
-        <button id="loadBtn" type="button">Load saved data</button>
-        <button id="clearSavedBtn" type="button">Clear saved data</button>
       </div>
-      <div id="otherWarning" class="message warn hidden">One or more items use “Other (BASE %)”. Verify applicability in Lighthouse before confirming customer comms.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Result</h2>
       <div class="totals">
-        <div class="total-box"><strong>Total Before</strong><div id="totalBefore">£0.00</div></div>
-        <div class="total-box"><strong>Total After</strong><div id="totalAfter">£0.00</div></div>
-        <div class="total-box"><strong>Total Difference</strong><div id="totalDiff">£0.00</div></div>
+        <div class="total-box"><strong>Total before</strong><div id="totalBefore">£0.00</div></div>
+        <div class="total-box"><strong>Total after</strong><div id="totalAfter">£0.00</div></div>
+        <div class="total-box"><strong>Difference</strong><div id="totalDiff">£0.00</div></div>
       </div>
-      <div id="ruleBreakdown" class="muted" style="margin-top:0.6rem;"></div>
-    </section>
-
-    <section class="panel">
-      <h2>Exit rights &amp; next steps (per Lighthouse)</h2>
-      <div class="grid">
-        <div class="col-4">
-          <label for="notificationDate">Customer notification received date</label>
-          <input id="notificationDate" type="date" />
-          <div class="checkbox-row"><label><input id="notificationUnknown" type="checkbox" /> Unknown</label></div>
-        </div>
-        <div class="col-4">
-          <label>Within 30 days?</label>
-          <div id="within30Status" class="message warn">Unknown</div>
-        </div>
-        <div class="col-4">
-          <label><input id="altitudeGamma" type="checkbox" /> Altitude customer on original Gamma contract</label>
-        </div>
-      </div>
-      <div id="exitRightsResult" class="message warn" style="margin-top:0.8rem;"></div>
-      <ul>
-        <li>If interested in re-signing/upgrading: attempt warm transfer to Loyalty; if not possible create an Opportunity and do NOT promise same-day callback.</li>
-        <li>If customer wants to cease: follow standard cease process.</li>
-        <li>If T&amp;Cs mismatch claimed: check with Commercial BEFORE advising.</li>
-        <li>After implementation, cannot revert to pre-increase pricing.</li>
-      </ul>
-    </section>
-
-    <section class="panel hidden" id="overchargePanel">
-      <h2>Contract overcharge check (MicroSME post-17 Jan 2025)</h2>
-      <div class="grid">
-        <div class="col-4">
-          <label for="actualBilled">Actual billed after increase (£)</label>
-          <input id="actualBilled" type="number" min="0" step="0.01" placeholder="Optional" />
-        </div>
-      </div>
-      <div id="overchargeResult" class="message warn" style="margin-top:0.7rem;">Enter actual billed after increase to run check.</div>
-    </section>
-
-    <section class="panel">
-      <h2>Case note</h2>
+      <ul id="rowSummary"></ul>
       <div class="toolbar">
-        <button id="copyCaseNoteBtn" type="button" class="primary">Copy case note</button>
+        <button id="copyExplanationBtn" type="button">Copy explanation</button>
       </div>
-      <pre id="caseNotePreview"></pre>
     </section>
   </main>
 
+  <footer>
+    Estimation tool. Confirm final charges in Lighthouse/Daisy Central.
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
+
   <script>
-    /*
-      TESTING CHECKLIST
-      - Verify examples:
-        - £10.00 WLR Line -> £22.50
-        - £10.00 broadband (base 6.9) -> £10.69
-        - £54.99 base 6.9 -> £58.78
-        - £379.99 leased line 10 -> £417.99
-      - Verify MicroSME post-17 Jan:
-        - base-% items show N/A until contractual % entered
-      - Verify billing start date >= 01 Jan 2026 shows exclusion warning
-      - Verify exit rights triggers appear when relevant items exist
-      - Verify case note copies to clipboard
-    */
+    const SERVICE_TYPES = [
+      { id: 'wlr', label: 'WLR Line (Single/Multi) – line only (+£12.50)', kind: 'flat' },
+      { id: 'isdn', label: 'ISDN2 / ISDN30 – per line (+£12.50)', kind: 'flat' },
+      { id: 'maintenance', label: 'Maintenance (+20%)', kind: 'percent', numerator: 1200 },
+      { id: 'hosting', label: 'Data Hosting (Co-Location / Rack Space) (+25%)', kind: 'percent', numerator: 1250 },
+      { id: 'leased', label: 'Leased Line connectivity (+10%)', kind: 'percent', numerator: 1100 },
+      { id: 'other', label: 'Broadband / Voice / Mobile / Other (base +6.9%)', kind: 'percent', numerator: 1069 }
+    ];
 
-    const CONFIG = {
-      cpiPct: 3.0,
-      additionalPct: 3.9,
-      defaultBasePct: 6.9,
-      sourceLink: 'https://xlngroup.sharepoint.com/sites/Lighthouse/SitePages/Initiatives%20%26%20Acquisitions/Price%20Increases/Price%20Increase%20April%202026.aspx',
-      categories: [
-        { value: 'WLR', label: 'WLR Line (Single/Multi Line) – LINE ONLY (+£12.50)', rule: { type: 'flat', pence: 1250, text: '+£12.50' } },
-        { value: 'ISDN', label: 'ISDN2/ISDN30 – PER LINE (+£12.50)', rule: { type: 'flat', pence: 1250, text: '+£12.50' } },
-        { value: 'Broadband', label: 'Broadband (ADSL/FTTC/SOGEA/FTTP etc.) – BASE % (CPI+3.9 or Contractual)', rule: { type: 'basePercent' } },
-        { value: 'Maintenance', label: 'Maintenance – 20%', rule: { type: 'percentFixed', perMille: 200, text: '+20%' } },
-        { value: 'Hosting', label: 'Data Hosting (Co-Location / Rack Space) – 25%', rule: { type: 'percentFixed', perMille: 250, text: '+25%' } },
-        { value: 'Leased', label: 'Leased Line Connectivity – 10%', rule: { type: 'percentFixed', perMille: 100, text: '+10%' } },
-        { value: 'HostedVoice', label: 'Hosted Voice Licences (DHV/Horizon/Phoneline+/Cloud Voice/WHC) – BASE %', rule: { type: 'basePercent' } },
-        { value: 'Mobiles', label: 'Mobiles / Hardware / Bolt-ons – BASE %', rule: { type: 'basePercent' } },
-        { value: 'Other', label: 'Other (BASE %) (explicitly warns to verify in Lighthouse)', rule: { type: 'basePercent', other: true } }
-      ]
-    };
+    const rowsEl = document.getElementById('serviceRows');
+    const totalBeforeEl = document.getElementById('totalBefore');
+    const totalAfterEl = document.getElementById('totalAfter');
+    const totalDiffEl = document.getElementById('totalDiff');
+    const rowSummaryEl = document.getElementById('rowSummary');
+    const toastEl = document.getElementById('toast');
 
-    const els = {
-      serviceRows: document.getElementById('serviceRows'),
-      addRowBtn: document.getElementById('addRowBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-      customerTypeGroup: document.getElementById('customerTypeGroup'),
-      servicesStartedGroup: document.getElementById('servicesStartedGroup'),
-      unknownServicesWarning: document.getElementById('unknownServicesWarning'),
-      billingStartDate: document.getElementById('billingStartDate'),
-      billingStartUnknown: document.getElementById('billingStartUnknown'),
-      billingWarning: document.getElementById('billingWarning'),
-      appliedWarning: document.getElementById('appliedWarning'),
-      baseModeText: document.getElementById('baseModeText'),
-      contractualPct: document.getElementById('contractualPct'),
-      contractPctWrap: document.getElementById('contractPctWrap'),
-      contractPctWarning: document.getElementById('contractPctWarning'),
-      totalBefore: document.getElementById('totalBefore'),
-      totalAfter: document.getElementById('totalAfter'),
-      totalDiff: document.getElementById('totalDiff'),
-      ruleBreakdown: document.getElementById('ruleBreakdown'),
-      otherWarning: document.getElementById('otherWarning'),
-      notificationDate: document.getElementById('notificationDate'),
-      notificationUnknown: document.getElementById('notificationUnknown'),
-      within30Status: document.getElementById('within30Status'),
-      altitudeGamma: document.getElementById('altitudeGamma'),
-      exitRightsResult: document.getElementById('exitRightsResult'),
-      overchargePanel: document.getElementById('overchargePanel'),
-      actualBilled: document.getElementById('actualBilled'),
-      overchargeResult: document.getElementById('overchargeResult'),
-      caseNotePreview: document.getElementById('caseNotePreview'),
-      copyCaseNoteBtn: document.getElementById('copyCaseNoteBtn'),
-      saveSessionToggle: document.getElementById('saveSessionToggle'),
-      loadBtn: document.getElementById('loadBtn'),
-      clearSavedBtn: document.getElementById('clearSavedBtn')
-    };
-
-    function poundsToPence(value) {
-      const s = String(value ?? '').trim().replace(/£|,/g, '');
-      if (s === '') return null;
-      const neg = s.startsWith('-');
-      const clean = neg ? s.slice(1) : s;
-      if (!/^\d*(\.\d{0,2})?$/.test(clean)) return null;
-      const [whole, dec = ''] = clean.split('.');
-      const pennies = (whole === '' ? 0 : parseInt(whole, 10)) * 100 + parseInt((dec + '00').slice(0, 2), 10);
-      return neg ? -pennies : pennies;
+    function poundsToPence(str) {
+      const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
+      if (!cleaned) return null;
+      if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+      const [whole, frac = ''] = cleaned.split('.');
+      const pennies = parseInt((frac + '00').slice(0, 2), 10);
+      return (parseInt(whole, 10) * 100) + pennies;
     }
 
-    function penceToPounds(pence) {
-      const val = Number.isFinite(pence) ? pence : 0;
-      const sign = val < 0 ? '-' : '';
-      const abs = Math.abs(val);
+    function formatGBP(penceInt) {
+      const sign = penceInt < 0 ? '-' : '';
+      const abs = Math.abs(penceInt);
       const pounds = Math.floor(abs / 100);
-      const pennies = String(abs % 100).padStart(2, '0');
-      return `${sign}£${pounds}.${pennies}`;
+      const pence = String(abs % 100).padStart(2, '0');
+      return `${sign}£${pounds}.${pence}`;
     }
 
-    function getSelected(name) {
-      const selected = document.querySelector(`input[name="${name}"]:checked`);
-      return selected ? selected.value : '';
+    function applyRule(oldPence, serviceTypeId) {
+      const service = SERVICE_TYPES.find((s) => s.id === serviceTypeId);
+      if (!service) return oldPence;
+      if (service.kind === 'flat') return oldPence + 1250;
+      return Math.round(oldPence * service.numerator / 1000);
     }
 
-    function getCohort() {
-      const customerType = getSelected('customerType');
-      const servicesStarted = getSelected('servicesStarted');
-      const contractualRaw = els.contractualPct.value;
-      const contractualPct = contractualRaw === '' ? null : Number(contractualRaw);
-      const baseModeContractual = customerType === 'MicroSME' && servicesStarted === 'On/After 17 Jan 2025';
-      return {
-        customerType,
-        servicesStarted,
-        contractualPct: Number.isFinite(contractualPct) ? contractualPct : null,
-        baseModeContractual,
-        alreadyApplied: getSelected('alreadyApplied') === 'Yes'
-      };
+    function createServiceOptions() {
+      return SERVICE_TYPES.map((s) => `<option value="${s.id}">${s.label}</option>`).join('');
     }
 
-    function applyIncrease(oldPence, rule, cohort) {
-      if (rule.type === 'flat') {
-        return { newPence: oldPence + rule.pence, ruleText: rule.text };
-      }
-      if (rule.type === 'percentFixed') {
-        const multiplier = 1000 + rule.perMille;
-        return { newPence: Math.round((oldPence * multiplier) / 1000), ruleText: rule.text };
-      }
-      if (rule.type === 'basePercent') {
-        let perMille;
-        let ruleText;
-        if (cohort.baseModeContractual) {
-          if (cohort.contractualPct === null) {
-            return { newPence: null, ruleText: 'N/A: contract uplift needed', warning: true };
-          }
-          perMille = Math.round(cohort.contractualPct * 10);
-          ruleText = `Contractual ${cohort.contractualPct}%`;
-        } else {
-          perMille = Math.round(CONFIG.defaultBasePct * 10);
-          ruleText = `Base ${CONFIG.defaultBasePct}%`;
-        }
-        const multiplier = 1000 + perMille;
-        return { newPence: Math.round((oldPence * multiplier) / 1000), ruleText };
-      }
-      return { newPence: oldPence, ruleText: 'No rule' };
-    }
-
-    function computeBasketTotals(items, cohort) {
-      let totalBefore = 0;
-      let totalAfter = 0;
-      const breakdown = {};
-      const computedItems = items.map((item) => {
-        const beforeUnit = item.currentPence ?? 0;
-        const qty = item.qty;
-        const increase = applyIncrease(beforeUnit, item.rule, cohort);
-        const beforeTotal = beforeUnit * qty;
-        const afterTotal = increase.newPence === null ? null : increase.newPence * qty;
-        const diff = afterTotal === null ? null : afterTotal - beforeTotal;
-
-        totalBefore += beforeTotal;
-        if (afterTotal !== null) totalAfter += afterTotal;
-
-        if (!breakdown[increase.ruleText]) breakdown[increase.ruleText] = { before: 0, after: 0, na: 0 };
-        breakdown[increase.ruleText].before += beforeTotal;
-        if (afterTotal === null) breakdown[increase.ruleText].na += 1;
-        else breakdown[increase.ruleText].after += afterTotal;
-
-        return { ...item, beforeTotal, afterTotal, diff, ruleText: increase.ruleText, invalid: item.currentPence === null };
-      });
-
-      return {
-        items: computedItems,
-        totalBefore,
-        totalAfter,
-        totalDiff: totalAfter - totalBefore,
-        breakdown
-      };
-    }
-
-    function computeExitRights(items, cohort, notificationDate, altitudeGammaFlag) {
-      const triggers = {
-        line: items.some((i) => i.category === 'WLR' || i.category === 'ISDN'),
-        maintenance: items.some((i) => i.category === 'Maintenance'),
-        hosting: items.some((i) => i.category === 'Hosting'),
-        leased: items.some((i) => i.category === 'Leased'),
-        altitude: altitudeGammaFlag
-      };
-      const hasTrigger = Object.values(triggers).some(Boolean);
-      let within30 = null;
-      if (notificationDate) {
-        const today = new Date();
-        const nDate = new Date(notificationDate + 'T00:00:00');
-        const diffDays = Math.floor((today - nDate) / 86400000);
-        within30 = diffDays >= 0 && diffDays <= 30;
-      }
-
-      let guidance = '';
-      if (cohort.customerType === 'Non-MicroSME' && cohort.servicesStarted === 'On/After 17 Jan 2025') {
-        guidance = 'Charges upheld; no right to exit following this increase (per Lighthouse). If within final 3 months of contract, raise Opp to Loyalty.';
-      } else if (hasTrigger) {
-        const parts = [];
-        if (triggers.line) parts.push('WLR/ISDN +£12.50 trigger. Linked products over WLR (e.g., ADSL over that line) also gain right to leave.');
-        if (triggers.maintenance) parts.push('Maintenance 20% trigger detected.');
-        if (triggers.hosting) parts.push('Data Hosting 25% trigger detected.');
-        if (triggers.leased) parts.push('Leased Line 10% trigger detected.');
-        if (triggers.altitude) parts.push('Altitude original Gamma contract trigger detected.');
-        guidance = `Potential exit right applies. ${parts.join(' ')}`;
-      } else {
-        guidance = 'No explicit exit-right trigger in current basket. Verify against Lighthouse and contract terms.';
-      }
-
-      return { within30, guidance, triggers, hasTrigger };
-    }
-
-    function generateCaseNote(state) {
-      const now = new Date().toLocaleString('en-GB');
-      const lines = [];
-      lines.push(`Date/time: ${now}`);
-      lines.push(`Customer type: ${state.cohort.customerType}`);
-      lines.push(`Services started: ${state.cohort.servicesStarted}`);
-      lines.push(`Billing start date: ${state.billingUnknown ? 'Unknown' : (state.billingStartDate || 'Not provided')}`);
-      if (state.billingExclusion) lines.push('Warning: Billing start appears on/after 01 Jan 2026 (likely excluded). Refer to Commercial to confirm.');
-      lines.push(`CPI: ${CONFIG.cpiPct}% | Base increase (CPI+${CONFIG.additionalPct}%): ${CONFIG.defaultBasePct}%`);
-      lines.push(`Base mode: ${state.cohort.baseModeContractual ? `Contractual (${state.cohort.contractualPct ?? 'N/A'}%)` : `Base ${CONFIG.defaultBasePct}%`}`);
-      lines.push('Service items:');
-      state.basket.items.forEach((item, idx) => {
-        lines.push(`${idx + 1}. ${item.categoryLabel}${item.description ? ` - ${item.description}` : ''} | Qty ${item.qty} | Before ${penceToPounds(item.beforeTotal)} | After ${item.afterTotal === null ? 'N/A' : penceToPounds(item.afterTotal)} | Diff ${item.diff === null ? 'N/A' : penceToPounds(item.diff)} | Rule ${item.ruleText}`);
-      });
-      lines.push(`Totals: Before ${penceToPounds(state.basket.totalBefore)} | After ${penceToPounds(state.basket.totalAfter)} | Diff ${penceToPounds(state.basket.totalDiff)}`);
-      lines.push(`Exit rights: ${state.exit.guidance}`);
-      lines.push(`30-day status: ${state.exit.within30 === null ? 'Unknown' : state.exit.within30 ? 'Within 30 days' : 'Outside 30 days'}`);
-      lines.push('Actions advised: warm transfer to Loyalty or create Opportunity (no same-day callback promise); follow standard cease process if customer wants to cease; check with Commercial before advising on T&Cs mismatch; cannot revert post implementation.');
-      if (state.overchargeMessage) lines.push(`Overcharge flow: ${state.overchargeMessage}`);
-      lines.push(`Lighthouse link: ${CONFIG.sourceLink}`);
-      return lines.join('\n');
-    }
-
-    function createRow(initial = {}) {
+    function addRow() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><select class="category">${CONFIG.categories.map(c => `<option value="${c.value}">${c.label}</option>`).join('')}</select></td>
+        <td><select class="serviceType" required>${createServiceOptions()}</select></td>
         <td><input class="description" type="text" placeholder="Optional" /></td>
-        <td><input class="charge" type="number" min="0" step="0.01" placeholder="0.00" /><div class="message warn hidden inlineWarn">Enter a valid amount.</div></td>
+        <td>
+          <input class="price" type="text" inputmode="decimal" placeholder="0.00" />
+          <div class="error">Enter a price</div>
+        </td>
         <td><input class="qty" type="number" min="1" step="1" value="1" /></td>
-        <td><span class="badge ruleBadge">-</span></td>
-        <td class="newUnit">£0.00</td>
-        <td class="beforeTotal">£0.00</td>
-        <td class="afterTotal">£0.00</td>
-        <td class="diff">£0.00</td>
         <td><button type="button" class="removeBtn">Remove</button></td>
       `;
-
-      tr.querySelector('.category').value = initial.category || 'Broadband';
-      tr.querySelector('.description').value = initial.description || '';
-      tr.querySelector('.charge').value = initial.charge ?? '';
-      tr.querySelector('.qty').value = initial.qty || 1;
-      return tr;
+      rowsEl.appendChild(tr);
     }
 
-    function serializeRows() {
-      return Array.from(els.serviceRows.querySelectorAll('tr')).map((row) => ({
-        category: row.querySelector('.category').value,
-        description: row.querySelector('.description').value.trim(),
-        charge: row.querySelector('.charge').value,
-        qty: Math.max(1, parseInt(row.querySelector('.qty').value || '1', 10) || 1)
-      }));
-    }
+    function recalc() {
+      const rowEls = Array.from(rowsEl.querySelectorAll('tr'));
+      let totalBefore = 0;
+      let totalAfter = 0;
+      const summaryItems = [];
 
-    function loadRows(rows) {
-      els.serviceRows.innerHTML = '';
-      rows.forEach(r => els.serviceRows.appendChild(createRow(r)));
-      if (!rows.length) els.serviceRows.appendChild(createRow());
-    }
+      rowEls.forEach((row) => {
+        const serviceId = row.querySelector('.serviceType').value;
+        const label = SERVICE_TYPES.find((s) => s.id === serviceId)?.label || 'Service';
+        const description = row.querySelector('.description').value.trim();
+        const priceInput = row.querySelector('.price');
+        const qtyInput = row.querySelector('.qty');
+        const errorEl = row.querySelector('.error');
 
-    function updateUI() {
-      const cohort = getCohort();
-      const rows = serializeRows();
-      const items = rows.map((r) => {
-        const categoryCfg = CONFIG.categories.find((c) => c.value === r.category) || CONFIG.categories[0];
-        return {
-          category: r.category,
-          categoryLabel: categoryCfg.label,
-          rule: categoryCfg.rule,
-          description: r.description,
-          currentPence: poundsToPence(r.charge),
-          qty: r.qty
-        };
+        const unitPence = poundsToPence(priceInput.value);
+        const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        qtyInput.value = qty;
+
+        if (unitPence === null) {
+          priceInput.classList.add('invalid');
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        priceInput.classList.remove('invalid');
+        errorEl.style.display = 'none';
+
+        const newUnitPence = applyRule(unitPence, serviceId);
+        const before = unitPence * qty;
+        const after = newUnitPence * qty;
+        const diff = after - before;
+
+        totalBefore += before;
+        totalAfter += after;
+
+        const shortLabel = description ? `${label} (${description})` : label;
+        summaryItems.push(`<li>${shortLabel}: ${formatGBP(before)} → ${formatGBP(after)} (Δ ${formatGBP(diff)})</li>`);
       });
 
-      els.unknownServicesWarning.classList.toggle('hidden', cohort.servicesStarted !== 'Unknown');
-      els.appliedWarning.classList.toggle('hidden', !cohort.alreadyApplied);
+      totalBeforeEl.textContent = formatGBP(totalBefore);
+      totalAfterEl.textContent = formatGBP(totalAfter);
+      totalDiffEl.textContent = formatGBP(totalAfter - totalBefore);
+      rowSummaryEl.innerHTML = summaryItems.join('');
 
-      const showContract = cohort.baseModeContractual;
-      els.contractPctWrap.classList.toggle('hidden', !showContract);
-      els.overchargePanel.classList.toggle('hidden', !showContract);
-      els.contractPctWarning.classList.toggle('hidden', !(showContract && cohort.contractualPct === null));
-
-      if (showContract) {
-        els.baseModeText.textContent = 'Base mode: Contractual increase (confirm contract). Product overrides still apply.';
-      } else {
-        els.baseModeText.textContent = `Base mode: ${CONFIG.defaultBasePct}% (CPI + ${CONFIG.additionalPct}%) unless product override.`;
-      }
-
-      if (els.billingStartUnknown.checked) {
-        els.billingStartDate.disabled = true;
-        els.billingWarning.classList.add('hidden');
-      } else {
-        els.billingStartDate.disabled = false;
-        const billing = els.billingStartDate.value;
-        const excluded = billing && new Date(billing + 'T00:00:00') >= new Date('2026-01-01T00:00:00');
-        if (excluded) {
-          els.billingWarning.textContent = 'Likely excluded (billing start on/after 01 Jan 2026). Refer to Commercial to confirm.';
-          els.billingWarning.className = 'message critical';
-          els.billingWarning.classList.remove('hidden');
-        } else {
-          els.billingWarning.classList.add('hidden');
-        }
-      }
-
-      const basket = computeBasketTotals(items, cohort);
-      let hasOther = false;
-      basket.items.forEach((item, idx) => {
-        const row = els.serviceRows.querySelectorAll('tr')[idx];
-        const inlineWarn = row.querySelector('.inlineWarn');
-        inlineWarn.classList.toggle('hidden', item.currentPence !== null);
-
-        const beforeTotalEl = row.querySelector('.beforeTotal');
-        const afterTotalEl = row.querySelector('.afterTotal');
-        const diffEl = row.querySelector('.diff');
-        const newUnitEl = row.querySelector('.newUnit');
-        const badge = row.querySelector('.ruleBadge');
-
-        const unitAfter = item.afterTotal === null ? null : Math.round(item.afterTotal / item.qty);
-        beforeTotalEl.textContent = penceToPounds(item.beforeTotal);
-        afterTotalEl.textContent = item.afterTotal === null ? 'N/A' : penceToPounds(item.afterTotal);
-        diffEl.textContent = item.diff === null ? 'N/A' : penceToPounds(item.diff);
-        newUnitEl.textContent = unitAfter === null ? 'N/A' : penceToPounds(unitAfter);
-        badge.textContent = item.ruleText;
-
-        if (item.category === 'Other') hasOther = true;
-      });
-
-      els.otherWarning.classList.toggle('hidden', !hasOther);
-      els.totalBefore.textContent = penceToPounds(basket.totalBefore);
-      els.totalAfter.textContent = penceToPounds(basket.totalAfter);
-      els.totalDiff.textContent = penceToPounds(basket.totalDiff);
-
-      const breakdownLines = Object.entries(basket.breakdown).map(([rule, v]) => `${rule}: Before ${penceToPounds(v.before)}, After ${penceToPounds(v.after)}${v.na ? `, N/A rows ${v.na}` : ''}`);
-      els.ruleBreakdown.textContent = breakdownLines.length ? `Breakdown: ${breakdownLines.join(' | ')}` : '';
-
-      const notificationDate = els.notificationUnknown.checked ? '' : els.notificationDate.value;
-      els.notificationDate.disabled = els.notificationUnknown.checked;
-      const exit = computeExitRights(items, cohort, notificationDate, els.altitudeGamma.checked);
-
-      if (exit.within30 === null) {
-        els.within30Status.textContent = 'Unknown';
-        els.within30Status.className = 'message warn';
-      } else if (exit.within30) {
-        els.within30Status.textContent = 'Yes, within 30 days';
-        els.within30Status.className = 'message ok';
-      } else {
-        els.within30Status.textContent = 'No, outside 30 days';
-        els.within30Status.className = 'message critical';
-      }
-      els.exitRightsResult.textContent = exit.guidance;
-      els.exitRightsResult.className = `message ${exit.hasTrigger ? 'ok' : 'warn'}`;
-
-      let overchargeMessage = '';
-      if (showContract) {
-        const actual = poundsToPence(els.actualBilled.value);
-        if (actual === null) {
-          els.overchargeResult.textContent = 'Enter actual billed after increase to run check.';
-          els.overchargeResult.className = 'message warn';
-        } else if (actual > basket.totalAfter) {
-          overchargeMessage = 'Re-rate tariff in line with contractual amount and raise a credit for overcharges. CHARGED WITHOUT AGREEMENT – Credit for rejected price increase';
-          els.overchargeResult.textContent = overchargeMessage;
-          els.overchargeResult.className = 'message critical';
-        } else {
-          overchargeMessage = 'No overcharge indicated against calculated contractual amount.';
-          els.overchargeResult.textContent = overchargeMessage;
-          els.overchargeResult.className = 'message ok';
-        }
-      }
-
-      const state = {
-        cohort,
-        billingStartDate: els.billingStartDate.value,
-        billingUnknown: els.billingStartUnknown.checked,
-        billingExclusion: !els.billingStartUnknown.checked && els.billingStartDate.value && new Date(els.billingStartDate.value + 'T00:00:00') >= new Date('2026-01-01T00:00:00'),
-        basket,
-        exit,
-        overchargeMessage
-      };
-
-      const note = generateCaseNote(state);
-      els.caseNotePreview.textContent = note;
-
-      if (els.saveSessionToggle.checked) {
-        localStorage.setItem('april2026-helper', JSON.stringify({
-          customerType: cohort.customerType,
-          servicesStarted: cohort.servicesStarted,
-          alreadyApplied: cohort.alreadyApplied ? 'Yes' : 'No',
-          billingStartDate: els.billingStartDate.value,
-          billingStartUnknown: els.billingStartUnknown.checked,
-          contractualPct: els.contractualPct.value,
-          rows,
-          notificationDate: els.notificationDate.value,
-          notificationUnknown: els.notificationUnknown.checked,
-          altitudeGamma: els.altitudeGamma.checked,
-          actualBilled: els.actualBilled.value
-        }));
-      }
+      return { totalBefore, totalAfter, diff: totalAfter - totalBefore };
     }
 
-    function loadSaved() {
-      const raw = localStorage.getItem('april2026-helper');
-      if (!raw) return;
+    function buildExplanationText(totals) {
+      return `From April 2026 your monthly charges will change from ${formatGBP(totals.totalBefore)} to ${formatGBP(totals.totalAfter)} (an increase of ${formatGBP(totals.diff)}). Individual services may increase by either +£12.50 per line or by a percentage uplift (typically 6.9%), depending on the service.`;
+    }
+
+    function showToast() {
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 1200);
+    }
+
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      addRow();
+      recalc();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      rowsEl.innerHTML = '';
+      addRow();
+      recalc();
+    });
+
+    document.getElementById('copyExplanationBtn').addEventListener('click', async () => {
+      const totals = recalc();
+      const text = buildExplanationText(totals);
       try {
-        const s = JSON.parse(raw);
-        document.querySelector(`input[name="customerType"][value="${s.customerType}"]`)?.click();
-        document.querySelector(`input[name="servicesStarted"][value="${s.servicesStarted}"]`)?.click();
-        document.querySelector(`input[name="alreadyApplied"][value="${s.alreadyApplied}"]`)?.click();
-        els.billingStartDate.value = s.billingStartDate || '';
-        els.billingStartUnknown.checked = !!s.billingStartUnknown;
-        els.contractualPct.value = s.contractualPct || '';
-        loadRows(s.rows || []);
-        els.notificationDate.value = s.notificationDate || '';
-        els.notificationUnknown.checked = !!s.notificationUnknown;
-        els.altitudeGamma.checked = !!s.altitudeGamma;
-        els.actualBilled.value = s.actualBilled || '';
-      } catch (e) {
-        console.error('Unable to load saved data', e);
-      }
-    }
-
-    function resetAll() {
-      document.querySelector('input[name="customerType"][value="MicroSME"]').click();
-      document.querySelector('input[name="servicesStarted"][value="Before 17 Jan 2025"]').click();
-      document.querySelector('input[name="alreadyApplied"][value="No"]').click();
-      els.billingStartDate.value = '';
-      els.billingStartUnknown.checked = false;
-      els.contractualPct.value = '';
-      els.notificationDate.value = '';
-      els.notificationUnknown.checked = false;
-      els.altitudeGamma.checked = false;
-      els.actualBilled.value = '';
-      loadRows([{ category: 'Broadband', qty: 1, charge: '' }]);
-      updateUI();
-    }
-
-    els.addRowBtn.addEventListener('click', () => {
-      els.serviceRows.appendChild(createRow());
-      updateUI();
-    });
-
-    els.serviceRows.addEventListener('click', (e) => {
-      if (e.target.classList.contains('removeBtn')) {
-        e.target.closest('tr').remove();
-        if (!els.serviceRows.querySelector('tr')) els.serviceRows.appendChild(createRow());
-        updateUI();
+        await navigator.clipboard.writeText(text);
+        showToast();
+      } catch (_err) {
+        const fallback = document.createElement('textarea');
+        fallback.value = text;
+        document.body.appendChild(fallback);
+        fallback.select();
+        document.execCommand('copy');
+        fallback.remove();
+        showToast();
       }
     });
 
-    document.getElementById('app').addEventListener('input', updateUI);
-    document.getElementById('app').addEventListener('change', updateUI);
-
-    els.resetBtn.addEventListener('click', resetAll);
-    els.loadBtn.addEventListener('click', () => { loadSaved(); updateUI(); });
-    els.clearSavedBtn.addEventListener('click', () => localStorage.removeItem('april2026-helper'));
-
-    els.copyCaseNoteBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(els.caseNotePreview.textContent);
-        els.copyCaseNoteBtn.textContent = 'Copied';
-        setTimeout(() => { els.copyCaseNoteBtn.textContent = 'Copy case note'; }, 1300);
-      } catch (e) {
-        els.copyCaseNoteBtn.textContent = 'Copy failed';
-        setTimeout(() => { els.copyCaseNoteBtn.textContent = 'Copy case note'; }, 1300);
-      }
+    rowsEl.addEventListener('input', (event) => {
+      if (event.target.closest('tr')) recalc();
     });
 
-    resetAll();
+    rowsEl.addEventListener('change', (event) => {
+      if (event.target.closest('tr')) recalc();
+    });
+
+    rowsEl.addEventListener('click', (event) => {
+      if (!event.target.classList.contains('removeBtn')) return;
+      const tr = event.target.closest('tr');
+      if (tr) tr.remove();
+      if (!rowsEl.querySelector('tr')) addRow();
+      recalc();
+    });
+
+    addRow();
+    recalc();
   </script>
 </body>
 </html>
