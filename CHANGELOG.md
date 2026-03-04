@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.10] - 2026-03-04
+### Fixed
+- Corrected LSR importer PIN parsing when Excel exports numbers in scientific notation (e.g. `1E+12`).
+- PIN values are now expanded using string-safe logic instead of numeric conversion, preventing precision loss.
+
+### Improved
+- Added validation warning for PINs potentially corrupted by Excel numeric truncation.
+
 ## [0.0.9] - 2026-03-04
 ### Added
 - LSR importer now detects and displays account number and company name from Live Service Reports.
