@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.6] - 2026-03-04
+### Added
+- Added a dedicated disclaimer panel beneath Results to highlight estimate-only usage and operational checks before advising customers.
+
+### Changed
+- Updated the copied explanation text with a concise Checks section covering contract-term precedence, Daisy Central letter verification, and possible exclusions.
+- Added clearer disclaimer wording that estimates only apply where increases are not already specified in the customer contract terms and to verify the customer letter in Daisy Central.
+
+### Fixed
+- None.
+
+### Removed
+- None.
+
 ## [0.0.5] - 2026-03-04
 ### Changed
 - Increased the main layout container max width to 1500px so the service table area sits more centrally on wide screens.

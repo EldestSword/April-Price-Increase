@@ -98,6 +98,16 @@
       font-size: 1.06rem;
     }
 
+    .disclaimer {
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: #f9fafb;
+    }
+
+    .disclaimer strong {
+      color: var(--text);
+    }
+
     .table-wrap {
       display: flex;
       justify-content: center;
@@ -409,6 +419,12 @@
         <button id="copyTableBtn" type="button">Copy table</button>
       </div>
     </section>
+
+    <div class="panel disclaimer">
+      <strong>Disclaimer:</strong> This is an estimate and only applies where the April 2026 increase is not already specified in the customer’s contract terms.
+      <br><br>
+      <strong>Important:</strong> Before advising a customer, verify which price increase letter they received in Daisy Central (under “Important information about your Daisy Service”). Some customers/services may be excluded.
+    </div>
   </main>
 
   <footer>
@@ -661,7 +677,12 @@
         'Pricing logic used:',
         '- WLR/ISDN line services: +£12.50 per line.',
         '- Other services: percentage uplift applied in pence-safe maths (e.g. base +6.9%).',
-        '- Microsoft products are excluded from the April 2026 price increase.'
+        '- Microsoft products are excluded from the April 2026 price increase.',
+        '',
+        'Checks:',
+        '- This estimate assumes the April 2026 increase is not already specified in the customer’s contract terms (contract terms take precedence).',
+        '- Verify which price increase letter the customer received in Daisy Central before providing guidance.',
+        '- Some customers/services may be excluded; confirm exemptions with Commercial if needed.'
       ];
 
       if (totals.cliValues.length > 0) {
