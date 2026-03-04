@@ -110,9 +110,42 @@
       border-collapse: separate;
       border-spacing: 0;
       font-size: 0.89rem;
-      min-width: 1360px;
+      min-width: 1500px;
       background: var(--card);
     }
+
+    /* Improve column widths for usability */
+    th:nth-child(1),
+    td:nth-child(1) {
+      min-width: 160px; /* Number/CLI */
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      min-width: 180px; /* Service description */
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      min-width: 220px; /* Service type dropdown */
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+      min-width: 140px; /* Current monthly charge */
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+      min-width: 70px; /* Quantity */
+      text-align: center;
+    }
+
+    th:nth-child(12),
+    td:nth-child(12) {
+      min-width: 120px; /* Actions column */
+    }
+
 
     th,
     td {
@@ -164,8 +197,8 @@
       border-color: #60a5fa;
     }
 
-    .price,
-    .qty { text-align: right; }
+    .price { text-align: right; }
+    .qty { text-align: center; }
 
     .computed {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
