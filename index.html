@@ -20,6 +20,12 @@
       --error: #b42318;
       --error-bg: #fff5f5;
       --shadow: 0 8px 22px rgba(17, 24, 39, 0.06);
+      --diff-pos-bg: #effaf3;
+      --diff-pos-border: #a7d9b8;
+      --diff-pos-text: #14532d;
+      --diff-neg-bg: #fff4f3;
+      --diff-neg-border: #efb2ad;
+      --diff-neg-text: #7f1d1d;
     }
 
     * { box-sizing: border-box; }
@@ -104,7 +110,7 @@
       border-collapse: separate;
       border-spacing: 0;
       font-size: 0.89rem;
-      min-width: 1080px;
+      min-width: 1360px;
       background: var(--card);
     }
 
@@ -177,6 +183,11 @@
       margin-top: 0.85rem;
     }
 
+    .row-actions {
+      display: flex;
+      gap: 0.35rem;
+    }
+
     button {
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -215,6 +226,11 @@
       border-color: #e38f84;
     }
 
+    .secondary {
+      padding: 0.35rem 0.55rem;
+      font-size: 0.8rem;
+    }
+
     .invalid {
       border-color: #e28b82 !important;
       background: var(--error-bg) !important;
@@ -229,7 +245,7 @@
 
     .totals {
       display: grid;
-      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
       gap: 0.65rem;
       margin-top: 0.5rem;
     }
@@ -239,6 +255,25 @@
       border-radius: 10px;
       padding: 0.65rem;
       background: #fcfcfd;
+    }
+
+    .diff-positive {
+      background: var(--diff-pos-bg);
+      border-color: var(--diff-pos-border);
+    }
+
+    .diff-positive div { color: var(--diff-pos-text); }
+
+    .diff-negative {
+      background: var(--diff-neg-bg);
+      border-color: var(--diff-neg-border);
+    }
+
+    .diff-negative div { color: var(--diff-neg-text); }
+
+    .diff-zero {
+      background: #fcfcfd;
+      border-color: var(--border);
     }
 
     .total-box strong {
@@ -304,6 +339,7 @@
           <thead>
             <tr>
               <th>Number/CLI</th>
+              <th>Service name / description</th>
               <th>Service type</th>
               <th>Current monthly charge (£)</th>
               <th>Qty</th>
@@ -313,7 +349,7 @@
               <th>Before (total)</th>
               <th>After (total)</th>
               <th>Diff (total)</th>
-              <th>Remove</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="serviceRows"></tbody>
@@ -330,10 +366,12 @@
       <div class="totals">
         <div class="total-box"><strong>Total before</strong><div id="totalBefore">£0.00</div></div>
         <div class="total-box"><strong>Total after</strong><div id="totalAfter">£0.00</div></div>
-        <div class="total-box"><strong>Difference</strong><div id="totalDiff">£0.00</div></div>
+        <div class="total-box diff-zero" id="totalDiffBox"><strong>Difference</strong><div id="totalDiff">£0.00</div></div>
+        <div class="total-box"><strong>Annual increase</strong><div id="annualDiff">£0.00</div></div>
       </div>
       <div class="toolbar">
         <button id="copyExplanationBtn" type="button">Copy explanation</button>
+        <button id="copyTableBtn" type="button">Copy table</button>
       </div>
     </section>
   </main>
@@ -345,6 +383,9 @@
   <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
 
   <script>
+    const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
+
+    // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
     const SERVICE_TYPES = [
       { id: '', label: 'Select service type' },
       { id: 'wlr', label: 'WLR Line (Single/Multi) – line only (+£12.50)', kind: 'flat' },
@@ -352,13 +393,16 @@
       { id: 'maintenance', label: 'Maintenance (+20%)', kind: 'percent', numerator: 1200 },
       { id: 'hosting', label: 'Data Hosting (Co-Location / Rack Space) (+25%)', kind: 'percent', numerator: 1250 },
       { id: 'leased', label: 'Leased Line connectivity (+10%)', kind: 'percent', numerator: 1100 },
-      { id: 'other', label: 'Broadband / Voice / Mobile / Other (base +6.9%)', kind: 'percent', numerator: 1069 }
+      { id: 'other', label: 'Broadband / Voice / Mobile / Other (base +6.9%)', kind: 'percent', numerator: 1069 },
+      { id: 'microsoft', label: 'Microsoft Products (Excluded – no increase)', kind: 'none' }
     ];
 
     const rowsEl = document.getElementById('serviceRows');
     const totalBeforeEl = document.getElementById('totalBefore');
     const totalAfterEl = document.getElementById('totalAfter');
     const totalDiffEl = document.getElementById('totalDiff');
+    const annualDiffEl = document.getElementById('annualDiff');
+    const totalDiffBoxEl = document.getElementById('totalDiffBox');
     const toastEl = document.getElementById('toast');
 
     function poundsToPence(str) {
@@ -381,7 +425,9 @@
     function applyRule(oldPence, serviceTypeId) {
       const service = SERVICE_TYPES.find((s) => s.id === serviceTypeId);
       if (!service) return oldPence;
+      if (service.kind === 'none') return oldPence;
       if (service.kind === 'flat') return oldPence + 1250;
+      // Using numerator/1000 keeps percentages precise in integer pence and avoids floating-point drift.
       return Math.round(oldPence * service.numerator / 1000);
     }
 
@@ -393,10 +439,16 @@
       return `<span class="computed">${value}</span>`;
     }
 
-    function addRow() {
+    function getServiceLabel(serviceId) {
+      const service = SERVICE_TYPES.find((s) => s.id === serviceId);
+      return service ? service.label : '—';
+    }
+
+    function addRow(data = {}) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input class="cli" type="text" placeholder="0161… / CLI" /></td>
+        <td><input class="cli" type="text" placeholder="0161… / CLI" value="${data.cli || ''}" /></td>
+        <td><input class="serviceDesc" type="text" placeholder="Optional service name" value="${data.desc || ''}" /></td>
         <td>
           <select class="serviceType" required>${createServiceOptions()}</select>
           <div class="error serviceError">Select a service</div>
@@ -405,15 +457,31 @@
           <input class="price" type="text" inputmode="decimal" placeholder="0.00" />
           <div class="error priceError">Enter a valid price</div>
         </td>
-        <td><input class="qty" type="number" min="1" step="1" value="1" /></td>
+        <td><input class="qty" type="number" min="1" step="1" value="${data.qty || 1}" /></td>
         <td data-field="beforeUnit">${computedCell()}</td>
         <td data-field="afterUnit">${computedCell()}</td>
         <td data-field="diffUnit">${computedCell()}</td>
         <td data-field="beforeTotal">${computedCell()}</td>
         <td data-field="afterTotal">${computedCell()}</td>
         <td data-field="diffTotal">${computedCell()}</td>
-        <td><button type="button" class="removeBtn danger">Remove</button></td>
+        <td>
+          <div class="row-actions">
+            <button type="button" class="duplicateBtn secondary">Duplicate</button>
+            <button type="button" class="removeBtn danger">Remove</button>
+          </div>
+        </td>
       `;
+
+      const serviceSelect = tr.querySelector('.serviceType');
+      const priceInput = tr.querySelector('.price');
+
+      if (data.serviceId) serviceSelect.value = data.serviceId;
+      if (Number.isInteger(data.pricePence)) {
+        priceInput.value = formatGBP(data.pricePence);
+      } else if (data.priceText) {
+        priceInput.value = data.priceText;
+      }
+
       rowsEl.appendChild(tr);
     }
 
@@ -436,22 +504,16 @@
       setField('diffTotal', formatGBP(model.totalDiffPence));
     }
 
-    function recalc() {
-      const rowEls = Array.from(rowsEl.querySelectorAll('tr'));
-      let totalBefore = 0;
-      let totalAfter = 0;
-      const cliValues = [];
-
-      rowEls.forEach((row) => {
+    function readRows() {
+      return Array.from(rowsEl.querySelectorAll('tr')).map((row) => {
         const cli = row.querySelector('.cli').value.trim();
+        const desc = row.querySelector('.serviceDesc').value.trim();
         const serviceSelect = row.querySelector('.serviceType');
         const serviceId = serviceSelect.value;
         const priceInput = row.querySelector('.price');
         const qtyInput = row.querySelector('.qty');
         const serviceError = row.querySelector('.serviceError');
         const priceError = row.querySelector('.priceError');
-
-        if (cli) cliValues.push(cli);
 
         const perUnitBeforePence = poundsToPence(priceInput.value);
         const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
@@ -467,7 +529,15 @@
 
         if (serviceMissing || priceMissing) {
           setComputedRow(row, { complete: false });
-          return;
+          return {
+            cli,
+            desc,
+            serviceId,
+            qty,
+            priceText: priceInput.value,
+            pricePence: perUnitBeforePence,
+            complete: false
+          };
         }
 
         const perUnitAfterPence = applyRule(perUnitBeforePence, serviceId);
@@ -486,29 +556,170 @@
           totalDiffPence
         });
 
-        totalBefore += totalBeforePence;
-        totalAfter += totalAfterPence;
+        return {
+          cli,
+          desc,
+          serviceId,
+          qty,
+          priceText: priceInput.value,
+          pricePence: perUnitBeforePence,
+          perUnitAfterPence,
+          perUnitDiffPence,
+          totalBeforePence,
+          totalAfterPence,
+          totalDiffPence,
+          complete: true
+        };
+      });
+    }
+
+    function saveRowsToStorage(rows) {
+      const safeRows = rows.map((row) => ({
+        cli: row.cli,
+        desc: row.desc,
+        serviceId: row.serviceId,
+        qty: row.qty,
+        pricePence: Number.isInteger(row.pricePence) ? row.pricePence : null,
+        priceText: row.priceText || ''
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(safeRows));
+    }
+
+    function recalc() {
+      const rows = readRows();
+      let totalBefore = 0;
+      let totalAfter = 0;
+      const cliValues = [];
+
+      rows.forEach((row) => {
+        if (row.cli) cliValues.push(row.cli);
+        if (!row.complete) return;
+        totalBefore += row.totalBeforePence;
+        totalAfter += row.totalAfterPence;
       });
 
       const diff = totalAfter - totalBefore;
+      const annualDiff = diff * 12;
       totalBeforeEl.textContent = formatGBP(totalBefore);
       totalAfterEl.textContent = formatGBP(totalAfter);
       totalDiffEl.textContent = formatGBP(diff);
+      annualDiffEl.textContent = formatGBP(annualDiff);
 
-      return { totalBefore, totalAfter, diff, cliValues };
+      totalDiffBoxEl.classList.remove('diff-positive', 'diff-negative', 'diff-zero');
+      if (diff > 0) totalDiffBoxEl.classList.add('diff-positive');
+      else if (diff < 0) totalDiffBoxEl.classList.add('diff-negative');
+      else totalDiffBoxEl.classList.add('diff-zero');
+
+      saveRowsToStorage(rows);
+
+      return { totalBefore, totalAfter, diff, annualDiff, cliValues, rows };
     }
 
     function buildExplanationText(totals) {
-      let text = `From April 2026 your monthly charges will change from ${formatGBP(totals.totalBefore)} to ${formatGBP(totals.totalAfter)} (an increase of ${formatGBP(totals.diff)}). Individual services may increase by either +£12.50 per line or by a percentage uplift (typically 6.9%), depending on the service.`;
+      const lines = [
+        'April 2026 bill increase summary',
+        `Total before: ${formatGBP(totals.totalBefore)} per month`,
+        `Total after: ${formatGBP(totals.totalAfter)} per month`,
+        `Monthly difference: ${formatGBP(totals.diff)}`,
+        `Annual increase: ${formatGBP(totals.annualDiff)}`,
+        '',
+        'Pricing logic used:',
+        '- WLR/ISDN line services: +£12.50 per line.',
+        '- Other services: percentage uplift applied in pence-safe maths (e.g. base +6.9%).',
+        '- Microsoft products are excluded from the April 2026 price increase.'
+      ];
+
       if (totals.cliValues.length > 0) {
-        text += ` Numbers/CLIs referenced: ${totals.cliValues.join(', ')}.`;
+        lines.push('', `Numbers/CLIs referenced: ${totals.cliValues.join(', ')}`);
       }
-      return text;
+
+      const detailedRows = totals.rows.filter((row) => row.complete && (row.cli || row.desc));
+      if (detailedRows.length > 0) {
+        lines.push('', 'Service lines:');
+        detailedRows.forEach((row) => {
+          const reference = [row.cli || 'No CLI', row.desc || 'No description'].join(' | ');
+          lines.push(`- ${reference} — ${getServiceLabel(row.serviceId)} — Qty ${row.qty} — ${formatGBP(row.totalBeforePence)} to ${formatGBP(row.totalAfterPence)} (diff ${formatGBP(row.totalDiffPence)}).`);
+        });
+      }
+
+      return lines.join('\n');
     }
 
-    function showToast() {
+    function buildCopyTableText(rows) {
+      const validRows = rows.filter((row) => row.complete);
+      const heading = ['CLI', 'Service description', 'Service type', 'Qty', 'Before total', 'After total', 'Diff total'];
+      const tsvRows = [heading.join('\t')];
+
+      validRows.forEach((row) => {
+        tsvRows.push([
+          row.cli || '—',
+          row.desc || '—',
+          getServiceLabel(row.serviceId),
+          String(row.qty),
+          formatGBP(row.totalBeforePence),
+          formatGBP(row.totalAfterPence),
+          formatGBP(row.totalDiffPence)
+        ].join('\t'));
+      });
+
+      if (validRows.length === 0) {
+        tsvRows.push('—\t—\t—\t—\t—\t—\t—');
+      }
+
+      return tsvRows.join('\n');
+    }
+
+    function showToast(message = 'Copied') {
+      toastEl.textContent = message;
       toastEl.classList.add('show');
       setTimeout(() => toastEl.classList.remove('show'), 1200);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Copied');
+      } catch (_err) {
+        const fallback = document.createElement('textarea');
+        fallback.value = text;
+        document.body.appendChild(fallback);
+        fallback.select();
+        document.execCommand('copy');
+        fallback.remove();
+        showToast('Copied');
+      }
+    }
+
+    function formatPriceOnBlur(priceInput) {
+      const parsed = poundsToPence(priceInput.value);
+      if (parsed === null) return;
+      priceInput.value = formatGBP(parsed);
+    }
+
+    function loadRowsFromStorage() {
+      let storedRows = [];
+      try {
+        storedRows = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch (_err) {
+        storedRows = [];
+      }
+
+      rowsEl.innerHTML = '';
+      if (!Array.isArray(storedRows) || storedRows.length === 0) {
+        addRow();
+        return;
+      }
+
+      storedRows.forEach((row) => {
+        addRow({
+          cli: row.cli || '',
+          desc: row.desc || '',
+          serviceId: row.serviceId || '',
+          qty: row.qty || 1,
+          pricePence: Number.isInteger(row.pricePence) ? row.pricePence : null,
+          priceText: row.priceText || ''
+        });
+      });
     }
 
     document.getElementById('addRowBtn').addEventListener('click', () => {
@@ -518,25 +729,19 @@
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       rowsEl.innerHTML = '';
+      localStorage.removeItem(STORAGE_KEY);
       addRow();
       recalc();
     });
 
     document.getElementById('copyExplanationBtn').addEventListener('click', async () => {
       const totals = recalc();
-      const text = buildExplanationText(totals);
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast();
-      } catch (_err) {
-        const fallback = document.createElement('textarea');
-        fallback.value = text;
-        document.body.appendChild(fallback);
-        fallback.select();
-        document.execCommand('copy');
-        fallback.remove();
-        showToast();
-      }
+      await copyText(buildExplanationText(totals));
+    });
+
+    document.getElementById('copyTableBtn').addEventListener('click', async () => {
+      const totals = recalc();
+      await copyText(buildCopyTableText(totals.rows));
     });
 
     rowsEl.addEventListener('input', (event) => {
@@ -547,7 +752,28 @@
       if (event.target.closest('tr')) recalc();
     });
 
+    rowsEl.addEventListener('blur', (event) => {
+      if (!event.target.classList.contains('price')) return;
+      formatPriceOnBlur(event.target);
+      recalc();
+    }, true);
+
     rowsEl.addEventListener('click', (event) => {
+      if (event.target.classList.contains('duplicateBtn')) {
+        const tr = event.target.closest('tr');
+        if (!tr) return;
+        addRow({
+          cli: tr.querySelector('.cli').value,
+          desc: tr.querySelector('.serviceDesc').value,
+          serviceId: tr.querySelector('.serviceType').value,
+          qty: tr.querySelector('.qty').value,
+          pricePence: poundsToPence(tr.querySelector('.price').value),
+          priceText: tr.querySelector('.price').value
+        });
+        recalc();
+        return;
+      }
+
       if (!event.target.classList.contains('removeBtn')) return;
       const tr = event.target.closest('tr');
       if (tr) tr.remove();
@@ -555,7 +781,7 @@
       recalc();
     });
 
-    addRow();
+    loadRowsFromStorage();
     recalc();
   </script>
 </body>

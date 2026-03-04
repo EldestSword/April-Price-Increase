@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.4] - 2026-03-04
+### Added
+- New "Microsoft Products (Excluded – no increase)" service type that explicitly applies no April 2026 uplift.
+- Optional "Service name / description" field per row.
+- Duplicate row action for quickly copying service lines.
+- Row persistence via localStorage with automatic restore on reload.
+- Annual increase total box (monthly difference × 12).
+- New "Copy table" action that copies a plain-text TSV table for CRM notes.
+
+### Changed
+- Explanation output is now multi-line and paste-ready, including totals, logic summary, Microsoft exclusion, CLI list, and concise row breakdowns.
+- Price input now auto-formats to canonical GBP format on blur when valid.
+- Difference total now uses subtle positive/zero/negative visual emphasis.
+- Added inline comments explaining integer percent scaling as numerator/1000 for pence-safe maths.
+
+### Fixed
+- Maintained exact no-change behaviour for excluded products (Before == After and Diff == £0.00).
+
 ## [0.0.3] - 2026-03-04
 ### Added
 - Per-row before/after/diff display (unit and totals).
