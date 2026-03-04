@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.5] - 2026-03-04
+### Changed
+- Increased the main layout container max width to 1500px so the service table area sits more centrally on wide screens.
+- Centered the scrollable table wrapper with flex alignment while preserving horizontal scrolling behaviour and responsive layout.
+
 ## [0.0.4] - 2026-03-04
 ### Added
 - New "Microsoft Products (Excluded – no increase)" service type that explicitly applies no April 2026 uplift.
