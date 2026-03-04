@@ -379,6 +379,7 @@
   <main class="wrap">
     <section class="panel">
       <h2>Add services</h2>
+      <div id="lsrAccountInfo" style="margin-bottom:8px;font-size:0.85rem;color:#555;"></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -462,6 +463,9 @@
     const importBtn = document.getElementById('importLSRBtn');
     const fileInput = document.getElementById('lsrFileInput');
     const tableWrapEl = document.querySelector('.table-wrap');
+
+    let importedAccountNumber = '';
+    let importedCompanyName = '';
 
     function poundsToPence(str) {
       const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
@@ -732,9 +736,20 @@
       return tsvRows.join('\n');
     }
 
-    function detectServiceType(desc) {
+    const IGNORED_LSR_SERVICES = [
+      'charge for paper invoicing',
+      'non dd payer',
+      'recurring credit card charge'
+    ];
+
+    function detectMaintenancePIN(pin) {
+      return pin && pin.startsWith('M0');
+    }
+
+    function detectServiceType(desc, cli) {
       const text = (desc || '').toLowerCase();
 
+      if (detectMaintenancePIN(cli)) return 'maintenance';
       if (text.includes('wlr') || text.includes('pstn') || text.includes('single line')) return 'wlr';
       if (text.includes('isdn')) return 'isdn';
       if (text.includes('maintenance') || text.includes('care level')) return 'maintenance';
@@ -753,6 +768,28 @@
       return Math.round(numeric * 100);
     }
 
+    function normalisePIN(rawPin) {
+      if (!rawPin) return '';
+
+      let pin = String(rawPin).trim();
+
+      if (pin.includes('E+')) {
+        pin = String(Number(pin));
+      }
+
+      pin = pin.replace(/\.0+$/, '');
+
+      if (/^[12378]\d{9}$/.test(pin)) {
+        pin = '0' + pin;
+      }
+
+      if (/^7\d{9}$/.test(pin)) {
+        pin = '0' + pin;
+      }
+
+      return pin;
+    }
+
     function addImportedRow(data) {
       addRow({
         cli: data.cli,
@@ -765,6 +802,8 @@
 
     function processLSRRows(rows) {
       let importedCount = 0;
+      importedAccountNumber = '';
+      importedCompanyName = '';
 
       const existingRows = Array.from(rowsEl.querySelectorAll('tr'));
 
@@ -780,14 +819,22 @@
       }
 
       rows.forEach((row) => {
-        let cli = row.PIN || row.Pin || row.CLI || row.Number || '';
-        cli = String(cli).trim();
+        const serviceName = row.ServiceDescription || row['Service Description'] || row.Description || row.Service || '';
+        const serviceNameLower = serviceName.toLowerCase();
 
-        if (cli.includes('E+')) {
-          cli = String(Number(cli));
+        if (IGNORED_LSR_SERVICES.some((service) => serviceNameLower.includes(service))) {
+          const accountPIN = normalisePIN(row.PIN || row.Pin || row.CLI || row.Number || '');
+          if (accountPIN) importedAccountNumber = accountPIN;
+
+          if (row.CompanyName) {
+            importedCompanyName = String(row.CompanyName).trim();
+          }
+
+          return;
         }
 
-        const desc = row.ServiceDescription || row['Service Description'] || row.Description || row.Service || '';
+        const cli = normalisePIN(row.PIN || row.Pin || row.CLI || row.Number || '');
+        const desc = serviceName;
         const qty = Math.max(1, parseInt(row.Quantity || row.Qty || 1, 10) || 1);
 
         const rawPrice = row['Pre-discount Total Rate'] || row['Pre-discount Rate'] || row.Monthly || row.Rate || '';
@@ -800,11 +847,18 @@
           desc: String(desc).trim(),
           qty,
           pricePence,
-          serviceType: detectServiceType(desc)
+          serviceType: detectServiceType(desc, cli)
         });
 
         importedCount += 1;
       });
+
+      if (importedAccountNumber || importedCompanyName) {
+        const infoEl = document.getElementById('lsrAccountInfo');
+        if (infoEl) {
+          infoEl.textContent = `Account: ${importedAccountNumber || 'Unknown'} | Customer: ${importedCompanyName || 'Unknown'}`;
+        }
+      }
 
       if (importedCount > 0) {
         recalc();
