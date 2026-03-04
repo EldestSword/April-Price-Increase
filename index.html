@@ -773,11 +773,27 @@
 
       let pin = String(rawPin).trim();
 
-      if (pin.includes('E+')) {
-        pin = String(Number(pin));
+      const sciMatch = pin.match(/^([0-9.]+)e\+([0-9]+)$/i);
+
+      if (sciMatch) {
+        const base = sciMatch[1].replace('.', '');
+        const exponent = parseInt(sciMatch[2], 10);
+
+        const digits = base.length;
+        const zerosNeeded = exponent - (digits - 1);
+
+        if (zerosNeeded > 0) {
+          pin = base + '0'.repeat(zerosNeeded);
+        } else {
+          pin = base;
+        }
       }
 
       pin = pin.replace(/\.0+$/, '');
+
+      if (sciMatch && /^[12378]\d{10}$/.test(pin) && pin.endsWith('0')) {
+        pin = pin.slice(0, -1);
+      }
 
       if (/^[12378]\d{9}$/.test(pin)) {
         pin = '0' + pin;
@@ -785,6 +801,10 @@
 
       if (/^7\d{9}$/.test(pin)) {
         pin = '0' + pin;
+      }
+
+      if (pin.length > 15 && pin.includes('0000000000')) {
+        console.warn('Possible Excel precision loss on PIN:', pin);
       }
 
       return pin;
