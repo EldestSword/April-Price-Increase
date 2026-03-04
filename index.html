@@ -733,13 +733,15 @@
     }
 
     function detectServiceType(desc) {
-      const normalised = (desc || '').toLowerCase();
-      if (normalised.includes('wlr') || normalised.includes('pstn') || normalised.includes('single line')) return 'wlr';
-      if (normalised.includes('isdn')) return 'isdn';
-      if (normalised.includes('maintenance') || normalised.includes('care level')) return 'maintenance';
-      if (normalised.includes('rack') || normalised.includes('colocation') || normalised.includes('co-location')) return 'hosting';
-      if (normalised.includes('leased line') || normalised.includes('ethernet')) return 'leased';
-      if (normalised.includes('microsoft')) return 'microsoft';
+      const text = (desc || '').toLowerCase();
+
+      if (text.includes('wlr') || text.includes('pstn') || text.includes('single line')) return 'wlr';
+      if (text.includes('isdn')) return 'isdn';
+      if (text.includes('maintenance') || text.includes('care level')) return 'maintenance';
+      if (text.includes('rack') || text.includes('co-location') || text.includes('colocation')) return 'hosting';
+      if (text.includes('leased line') || text.includes('ethernet') || text.includes('mpls')) return 'leased';
+      if (text.includes('microsoft') || text.includes('office 365')) return 'microsoft';
+
       return 'other';
     }
 
@@ -763,31 +765,44 @@
 
     function processLSRRows(rows) {
       let importedCount = 0;
+
       const existingRows = Array.from(rowsEl.querySelectorAll('tr'));
+
       if (existingRows.length === 1) {
         const starterRow = existingRows[0];
+
         const starterIsEmpty = !starterRow.querySelector('.cli').value.trim()
           && !starterRow.querySelector('.serviceDesc').value.trim()
           && !starterRow.querySelector('.serviceType').value
           && !starterRow.querySelector('.price').value.trim();
+
         if (starterIsEmpty) starterRow.remove();
       }
 
       rows.forEach((row) => {
-        const cli = row.PIN || row.Pin || row.CLI || row.Number || '';
-        const desc = row['Service Description'] || row.Description || row.Service || '';
-        const qty = Math.max(1, parseInt(row.Quantity || row.Qty || 1, 10) || 1);
-        const pricePence = parseImportPriceToPence(row['Pre-discount Total Rate'] || row.Monthly || row.Rate || '');
+        let cli = row.PIN || row.Pin || row.CLI || row.Number || '';
+        cli = String(cli).trim();
 
-        if (!cli || !desc || !pricePence) return;
+        if (cli.includes('E+')) {
+          cli = String(Number(cli));
+        }
+
+        const desc = row.ServiceDescription || row['Service Description'] || row.Description || row.Service || '';
+        const qty = Math.max(1, parseInt(row.Quantity || row.Qty || 1, 10) || 1);
+
+        const rawPrice = row['Pre-discount Total Rate'] || row['Pre-discount Rate'] || row.Monthly || row.Rate || '';
+        const pricePence = parseImportPriceToPence(rawPrice);
+
+        if (!cli || !desc || !pricePence || pricePence <= 0) return;
 
         addImportedRow({
-          cli: String(cli).trim(),
+          cli,
           desc: String(desc).trim(),
           qty,
           pricePence,
           serviceType: detectServiceType(desc)
         });
+
         importedCount += 1;
       });
 
