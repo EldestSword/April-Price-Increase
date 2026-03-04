@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.11] - 2026-03-04
+### Added
+- Sticky totals bar for easier viewing while scrolling.
+- Row colour coding to visually highlight increases.
+- Automatic highlight of the largest service increase.
+- CRM-ready summary copy button.
+- Customer-friendly explanation copy button.
+- Version display in UI.
+- Basic usage analytics stored locally.
+
+### Improved
+- Smart price formatting during input.
+- Input validation to prevent unrealistic values.
+
 ## [0.0.10] - 2026-03-04
 ### Fixed
 - Corrected LSR importer PIN parsing when Excel exports numbers in scientific notation (e.g. `1E+12`).
