@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.7] - 2026-03-04
+### Added
+- Basic LSR importer for automatic service population.
+- Automatic service type detection from service description.
+
+### Changed
+- Added an Import LSR toolbar action with spreadsheet upload support for .xlsx, .xls, and .csv files.
+
+### Fixed
+- None.
+
+### Removed
+- None.
+
 ## [0.0.6] - 2026-03-04
 ### Added
 - Added a dedicated disclaimer panel beneath Results to highlight estimate-only usage and operational checks before advising customers.
