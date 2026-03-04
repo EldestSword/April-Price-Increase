@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.8] - 2026-03-04
+### Added
+- None.
+
+### Changed
+- None.
+
+### Fixed
+- LSR importer now supports Daisy "Live Services and Calls by Account" format.
+- Correctly reads ServiceDescription, Quantity, and Pre-discount Total Rate columns.
+- Handles Excel scientific notation PIN values.
+- Filters out £0 administrative service rows.
+
+### Removed
+- None.
+
 ## [0.0.7] - 2026-03-04
 ### Added
 - Basic LSR importer for automatic service population.
