@@ -402,6 +402,8 @@
       </div>
       <div class="toolbar">
         <button id="addRowBtn" type="button" class="primary">Add row</button>
+        <button id="importLSRBtn" type="button">Import LSR</button>
+        <input type="file" id="lsrFileInput" accept=".xlsx,.xls,.csv" style="display:none" />
         <button id="resetBtn" type="button">Reset</button>
       </div>
     </section>
@@ -433,6 +435,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
@@ -455,6 +459,9 @@
     const annualDiffEl = document.getElementById('annualDiff');
     const totalDiffBoxEl = document.getElementById('totalDiffBox');
     const toastEl = document.getElementById('toast');
+    const importBtn = document.getElementById('importLSRBtn');
+    const fileInput = document.getElementById('lsrFileInput');
+    const tableWrapEl = document.querySelector('.table-wrap');
 
     function poundsToPence(str) {
       const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
@@ -725,6 +732,73 @@
       return tsvRows.join('\n');
     }
 
+    function detectServiceType(desc) {
+      const normalised = (desc || '').toLowerCase();
+      if (normalised.includes('wlr') || normalised.includes('pstn') || normalised.includes('single line')) return 'wlr';
+      if (normalised.includes('isdn')) return 'isdn';
+      if (normalised.includes('maintenance') || normalised.includes('care level')) return 'maintenance';
+      if (normalised.includes('rack') || normalised.includes('colocation') || normalised.includes('co-location')) return 'hosting';
+      if (normalised.includes('leased line') || normalised.includes('ethernet')) return 'leased';
+      if (normalised.includes('microsoft')) return 'microsoft';
+      return 'other';
+    }
+
+    function parseImportPriceToPence(rawPrice) {
+      const cleaned = String(rawPrice ?? '').replace(/[^0-9.\-]/g, '');
+      if (!cleaned) return null;
+      const numeric = Number.parseFloat(cleaned);
+      if (!Number.isFinite(numeric) || numeric <= 0) return null;
+      return Math.round(numeric * 100);
+    }
+
+    function addImportedRow(data) {
+      addRow({
+        cli: data.cli,
+        desc: data.desc,
+        qty: data.qty,
+        pricePence: data.pricePence,
+        serviceId: data.serviceType
+      });
+    }
+
+    function processLSRRows(rows) {
+      let importedCount = 0;
+      const existingRows = Array.from(rowsEl.querySelectorAll('tr'));
+      if (existingRows.length === 1) {
+        const starterRow = existingRows[0];
+        const starterIsEmpty = !starterRow.querySelector('.cli').value.trim()
+          && !starterRow.querySelector('.serviceDesc').value.trim()
+          && !starterRow.querySelector('.serviceType').value
+          && !starterRow.querySelector('.price').value.trim();
+        if (starterIsEmpty) starterRow.remove();
+      }
+
+      rows.forEach((row) => {
+        const cli = row.PIN || row.Pin || row.CLI || row.Number || '';
+        const desc = row['Service Description'] || row.Description || row.Service || '';
+        const qty = Math.max(1, parseInt(row.Quantity || row.Qty || 1, 10) || 1);
+        const pricePence = parseImportPriceToPence(row['Pre-discount Total Rate'] || row.Monthly || row.Rate || '');
+
+        if (!cli || !desc || !pricePence) return;
+
+        addImportedRow({
+          cli: String(cli).trim(),
+          desc: String(desc).trim(),
+          qty,
+          pricePence,
+          serviceType: detectServiceType(desc)
+        });
+        importedCount += 1;
+      });
+
+      if (importedCount > 0) {
+        recalc();
+        tableWrapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      showToast(`Imported ${importedCount} services from LSR`);
+    }
+
     function showToast(message = 'Copied') {
       toastEl.textContent = message;
       toastEl.classList.add('show');
@@ -777,6 +851,34 @@
         });
       });
     }
+
+    importBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (loadEvent) => {
+        try {
+          const data = new Uint8Array(loadEvent.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) {
+            showToast('Could not read LSR file');
+            return;
+          }
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          processLSRRows(rows);
+        } catch (_err) {
+          showToast('Could not read LSR file');
+        } finally {
+          fileInput.value = '';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
 
     document.getElementById('addRowBtn').addEventListener('click', () => {
       addRow();
