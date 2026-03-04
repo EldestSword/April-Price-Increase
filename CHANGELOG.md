@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.9] - 2026-03-04
+### Added
+- LSR importer now detects and displays account number and company name from Live Service Reports.
+- Automatic restoration of missing leading zeros for UK phone numbers.
+- Automatic identification of mobile numbers starting with 07.
+- Automatic detection of Maintenance services via M0 PIN prefix.
+
+### Changed
+- LSR importer now normalises Excel scientific-notation PIN values.
+
+### Fixed
+- Administrative services ("Charge for Paper Invoicing", "Non DD Payer", "Recurring Credit Card Charge") are now ignored during import.
+
+### Removed
+- None.
+
 ## [0.0.8] - 2026-03-04
 ### Added
 - None.
