@@ -293,6 +293,27 @@
       grid-template-columns: repeat(4, minmax(120px, 1fr));
       gap: 0.65rem;
       margin-top: 0.5rem;
+      position: sticky;
+      bottom: 0;
+      background: var(--card);
+      padding-top: 0.5rem;
+      z-index: 5;
+    }
+
+    .row-diff-pos {
+      background: #effaf3;
+    }
+
+    .row-diff-neg {
+      background: #fff4f3;
+    }
+
+    .row-diff-zero {
+      background: #fcfcfd;
+    }
+
+    .largest-increase {
+      outline: 2px solid #1d4ed8;
     }
 
     .total-box {
@@ -420,6 +441,8 @@
       <div class="toolbar">
         <button id="copyExplanationBtn" type="button">Copy explanation</button>
         <button id="copyTableBtn" type="button">Copy table</button>
+        <button id="copyCRMBtn" type="button">Copy CRM note</button>
+        <button id="copyCustomerBtn" type="button">Copy customer explanation</button>
       </div>
     </section>
 
@@ -432,6 +455,9 @@
 
   <footer>
     Estimation tool. Confirm final charges in Lighthouse/Daisy Central.
+    <div style="font-size:0.75rem;color:#9aa3af;margin-top:4px;">
+      Version <span id="versionDisplay"></span>
+    </div>
   </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
@@ -439,6 +465,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
+    const VERSION = '0.0.11';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -464,6 +491,11 @@
     const fileInput = document.getElementById('lsrFileInput');
     const tableWrapEl = document.querySelector('.table-wrap');
 
+    const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
+    analytics.imports = analytics.imports || 0;
+    analytics.rowsProcessed = analytics.rowsProcessed || 0;
+    analytics.totalIncrease = analytics.totalIncrease || 0;
+
     let importedAccountNumber = '';
     let importedCompanyName = '';
 
@@ -471,6 +503,8 @@
       const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
       if (!cleaned) return null;
       if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+      const numeric = Number.parseFloat(cleaned);
+      if (!Number.isFinite(numeric) || numeric > 100000) return null;
       const [whole, frac = ''] = cleaned.split('.');
       const pennies = parseInt((frac + '00').slice(0, 2), 10);
       return (parseInt(whole, 10) * 100) + pennies;
@@ -555,6 +589,7 @@
 
       if (!model.complete) {
         ['beforeUnit', 'afterUnit', 'diffUnit', 'beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
+        row.classList.remove('row-diff-pos', 'row-diff-neg', 'row-diff-zero');
         return;
       }
 
@@ -564,6 +599,11 @@
       setField('beforeTotal', formatGBP(model.totalBeforePence));
       setField('afterTotal', formatGBP(model.totalAfterPence));
       setField('diffTotal', formatGBP(model.totalDiffPence));
+
+      row.classList.remove('row-diff-pos', 'row-diff-neg', 'row-diff-zero');
+      if (model.totalDiffPence > 0) row.classList.add('row-diff-pos');
+      else if (model.totalDiffPence < 0) row.classList.add('row-diff-neg');
+      else row.classList.add('row-diff-zero');
     }
 
     function readRows() {
@@ -578,7 +618,7 @@
         const priceError = row.querySelector('.priceError');
 
         const perUnitBeforePence = poundsToPence(priceInput.value);
-        const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        const qty = Math.max(1, Math.min(1000, parseInt(qtyInput.value, 10) || 1));
         qtyInput.value = qty;
 
         const serviceMissing = !serviceId;
@@ -662,6 +702,21 @@
 
       const diff = totalAfter - totalBefore;
       const annualDiff = diff * 12;
+
+      const diffs = rows
+        .filter((r) => r.complete)
+        .map((r) => r.totalDiffPence);
+
+      const maxDiff = diffs.length ? Math.max(...diffs) : 0;
+
+      Array.from(rowsEl.querySelectorAll('tr')).forEach((tr, i) => {
+        tr.classList.remove('largest-increase');
+
+        const r = rows[i];
+        if (r && r.totalDiffPence === maxDiff && maxDiff > 0) {
+          tr.classList.add('largest-increase');
+        }
+      });
       totalBeforeEl.textContent = formatGBP(totalBefore);
       totalAfterEl.textContent = formatGBP(totalAfter);
       totalDiffEl.textContent = formatGBP(diff);
@@ -671,6 +726,9 @@
       if (diff > 0) totalDiffBoxEl.classList.add('diff-positive');
       else if (diff < 0) totalDiffBoxEl.classList.add('diff-negative');
       else totalDiffBoxEl.classList.add('diff-zero');
+
+      analytics.totalIncrease += diff;
+      localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
 
       saveRowsToStorage(rows);
 
@@ -708,6 +766,47 @@
           lines.push(`- ${reference} — ${getServiceLabel(row.serviceId)} — Qty ${row.qty} — ${formatGBP(row.totalBeforePence)} to ${formatGBP(row.totalAfterPence)} (diff ${formatGBP(row.totalDiffPence)}).`);
         });
       }
+
+      return lines.join('\n');
+    }
+
+    function buildCRMNote(totals) {
+      const lines = [];
+
+      if (importedCompanyName) lines.push(`Customer: ${importedCompanyName}`);
+      if (importedAccountNumber) lines.push(`Account: ${importedAccountNumber}`);
+
+      lines.push('');
+      lines.push('April 2026 price increase explained.');
+      lines.push('');
+      lines.push(`Current monthly: ${formatGBP(totals.totalBefore)}`);
+      lines.push(`New monthly: ${formatGBP(totals.totalAfter)}`);
+      lines.push(`Increase: ${formatGBP(totals.diff)}`);
+      lines.push('');
+      lines.push('Services reviewed:');
+
+      totals.rows
+        .filter((r) => r.complete)
+        .forEach((r) => {
+          lines.push(`${r.cli || '—'} – ${r.desc || 'Service'} – ${formatGBP(r.totalBeforePence)} → ${formatGBP(r.totalAfterPence)}`);
+        });
+
+      lines.push('');
+      lines.push('Estimate only. Contract terms may override.');
+
+      return lines.join('\n');
+    }
+
+    function buildCustomerExplanation(totals) {
+      const lines = [];
+
+      lines.push(`Your current monthly bill is ${formatGBP(totals.totalBefore)}.`);
+      lines.push('');
+      lines.push(`From April 2026 this will change to approximately ${formatGBP(totals.totalAfter)}.`);
+      lines.push('');
+      lines.push(`This represents an increase of ${formatGBP(totals.diff)} per month.`);
+      lines.push('');
+      lines.push('This estimate is based on the standard April 2026 pricing adjustments.');
 
       return lines.join('\n');
     }
@@ -880,6 +979,10 @@
         }
       }
 
+      analytics.imports += 1;
+      analytics.rowsProcessed += importedCount;
+      localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
+
       if (importedCount > 0) {
         recalc();
         tableWrapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -991,7 +1094,21 @@
       await copyText(buildCopyTableText(totals.rows));
     });
 
+    document.getElementById('copyCRMBtn').addEventListener('click', async () => {
+      const totals = recalc();
+      await copyText(buildCRMNote(totals));
+    });
+
+    document.getElementById('copyCustomerBtn').addEventListener('click', async () => {
+      const totals = recalc();
+      await copyText(buildCustomerExplanation(totals));
+    });
+
     rowsEl.addEventListener('input', (event) => {
+      if (event.target.classList.contains('price')) {
+        const clean = event.target.value.replace(/[^\d.]/g, '');
+        event.target.value = clean;
+      }
       if (event.target.closest('tr')) recalc();
     });
 
@@ -1027,6 +1144,8 @@
       if (!rowsEl.querySelector('tr')) addRow();
       recalc();
     });
+
+    document.getElementById('versionDisplay').textContent = VERSION;
 
     loadRowsFromStorage();
     recalc();
