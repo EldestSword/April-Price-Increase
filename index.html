@@ -144,17 +144,22 @@
 
     th:nth-child(4),
     td:nth-child(4) {
-      min-width: 140px; /* Current monthly charge */
+      min-width: 120px; /* Rule */
     }
 
     th:nth-child(5),
     td:nth-child(5) {
+      min-width: 140px; /* Current monthly charge */
+    }
+
+    th:nth-child(6),
+    td:nth-child(6) {
       min-width: 70px; /* Quantity */
       text-align: center;
     }
 
-    th:nth-child(12),
-    td:nth-child(12) {
+    th:nth-child(10),
+    td:nth-child(10) {
       min-width: 120px; /* Actions column */
     }
 
@@ -389,6 +394,7 @@
     <section class="panel">
       <h2>Add services</h2>
       <div id="lsrAccountInfo" style="margin-bottom:8px;font-size:0.85rem;color:#555;"></div>
+      <div id="rowWarnings" style="margin: 6px 0 10px; display:none; background:#fff7cc; border:1px solid #f2d675; border-radius:10px; padding:0.5rem 0.6rem; font-size:0.85rem; color:#7a5b00;"></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -396,6 +402,7 @@
               <th>Number/CLI</th>
               <th>Service name / description</th>
               <th>Service type</th>
+              <th>Rule</th>
               <th>Current monthly charge (£)</th>
               <th>Qty</th>
               <th>Before (total)</th>
@@ -407,6 +414,8 @@
           <tbody id="serviceRows"></tbody>
         </table>
       </div>
+      <div id="breakdownPanel" style="margin-top: 0.85rem;"></div>
+      <div id="driversPanel" style="margin-top: 0.85rem;"></div>
       <div class="toolbar">
         <button id="addRowBtn" type="button" class="primary">Add row</button>
         <button id="importLSRBtn" type="button">Import LSR</button>
@@ -450,7 +459,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
-    const VERSION = '0.0.14';
+    const VERSION = '0.0.15';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -475,6 +484,9 @@
     const importBtn = document.getElementById('importLSRBtn');
     const fileInput = document.getElementById('lsrFileInput');
     const tableWrapEl = document.querySelector('.table-wrap');
+    const rowWarningsEl = document.getElementById('rowWarnings');
+    const breakdownPanelEl = document.getElementById('breakdownPanel');
+    const driversPanelEl = document.getElementById('driversPanel');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -536,6 +548,105 @@
       return service ? service.label : '—';
     }
 
+    function getServiceRuleLabel(serviceTypeId) {
+      if (!serviceTypeId) return '—';
+      const service = SERVICE_TYPES.find((s) => s.id === serviceTypeId);
+      if (!service) return '—';
+      if (service.kind === 'none') return 'No increase';
+      if (service.kind === 'flat') return '+£12.50';
+      if (service.kind === 'percent') {
+        const upliftPercent = (service.numerator - 1000) / 10;
+        return Number.isInteger(upliftPercent) ? `+${upliftPercent}%` : `+${upliftPercent.toFixed(1)}%`;
+      }
+      return '—';
+    }
+
+    function getShortServiceLabel(serviceId) {
+      const label = getServiceLabel(serviceId);
+      return label.split(' – ')[0].split(' (')[0];
+    }
+
+    function truncateText(text, max = 60) {
+      if (text.length <= max) return text;
+      return `${text.slice(0, max - 1)}…`;
+    }
+
+    function renderRowWarnings(missingTypeCount) {
+      if (missingTypeCount > 0) {
+        rowWarningsEl.style.display = 'block';
+        rowWarningsEl.textContent = `⚠ ${missingTypeCount} row(s) need a service type selecting.`;
+        return;
+      }
+      rowWarningsEl.style.display = 'none';
+      rowWarningsEl.textContent = '';
+    }
+
+    function renderBreakdownByServiceType(totals) {
+      const entries = Object.values(totals.breakdownByType || {}).sort((a, b) => b.diffPence - a.diffPence);
+      if (!entries.length) {
+        breakdownPanelEl.innerHTML = '';
+        return;
+      }
+
+      const rows = entries.map((entry) => `
+        <tr>
+          <td>${getShortServiceLabel(entry.serviceId)} (${entry.count})</td>
+          <td>${formatGBP(entry.beforePence)}</td>
+          <td>${formatGBP(entry.afterPence)}</td>
+          <td>${formatGBP(entry.diffPence)}</td>
+        </tr>`).join('');
+
+      breakdownPanelEl.innerHTML = `
+        <strong style="display:block;margin-bottom:0.4rem;">Breakdown by service type</strong>
+        <table style="width:100%;min-width:0;font-size:0.84rem;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="position:static;background:#f9fafb;">Service type</th>
+              <th style="position:static;background:#f9fafb;">Before</th>
+              <th style="position:static;background:#f9fafb;">After</th>
+              <th style="position:static;background:#f9fafb;">Diff</th>
+            </tr>
+          </thead>
+          <tbody>${rows}
+          </tbody>
+        </table>`;
+    }
+
+    function renderIncreaseDrivers(totals) {
+      const completeRows = totals.rows.filter((row) => row.complete);
+      if (!completeRows.length) {
+        driversPanelEl.innerHTML = '';
+        return;
+      }
+
+      const topTypes = Object.values(totals.breakdownByType || {})
+        .sort((a, b) => b.diffPence - a.diffPence)
+        .slice(0, 3);
+
+      const topRows = completeRows
+        .slice()
+        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
+        .slice(0, 3);
+
+      const typeItems = topTypes.length
+        ? topTypes.map((item) => `<li>${getShortServiceLabel(item.serviceId)}: ${formatGBP(item.diffPence)}</li>`).join('')
+        : '<li>None</li>';
+
+      const rowItems = topRows.length
+        ? topRows.map((row) => {
+          const reference = truncateText(row.desc || row.cli || 'Service');
+          return `<li>${reference} | ${getShortServiceLabel(row.serviceId)}: ${formatGBP(row.totalDiffPence)}</li>`;
+        }).join('')
+        : '<li>None</li>';
+
+      driversPanelEl.innerHTML = `
+        <strong style="display:block;margin-bottom:0.4rem;">Biggest drivers of increase</strong>
+        <div style="font-size:0.85rem;color:#374151;">By service type</div>
+        <ul style="margin:0.2rem 0 0.5rem 1.1rem;padding:0;">${typeItems}</ul>
+        <div style="font-size:0.85rem;color:#374151;">By service line</div>
+        <ul style="margin:0.2rem 0 0 1.1rem;padding:0;">${rowItems}</ul>`;
+    }
+
     function addRow(data = {}) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -545,6 +656,7 @@
           <select class="serviceType" required>${createServiceOptions()}</select>
           <div class="error serviceError">Select a service</div>
         </td>
+        <td data-field="ruleCell">${computedCell()}</td>
         <td>
           <input class="price" type="text" inputmode="decimal" placeholder="0.00" />
           <div class="error priceError">Enter a valid price</div>
@@ -581,10 +693,11 @@
       };
 
       if (!model.complete) {
-        ['beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
+        ['ruleCell', 'beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
         return;
       }
 
+      setField('ruleCell', getServiceRuleLabel(model.serviceId));
       setField('beforeTotal', formatGBP(model.totalBeforePence));
       setField('afterTotal', formatGBP(model.totalAfterPence));
       setField('diffTotal', formatGBP(model.totalDiffPence));
@@ -605,8 +718,16 @@
         const qty = Math.max(1, Math.min(1000, parseInt(qtyInput.value, 10) || 1));
         qtyInput.value = qty;
 
-        const serviceMissing = !serviceId;
-        const priceMissing = perUnitBeforePence === null;
+        const rowHasMeaningfulData = Boolean(
+          cli ||
+          desc ||
+          priceInput.value.trim() ||
+          qty !== 1 ||
+          serviceId
+        );
+
+        const serviceMissing = !serviceId && rowHasMeaningfulData;
+        const priceMissing = perUnitBeforePence === null && rowHasMeaningfulData;
 
         serviceSelect.classList.toggle('invalid', serviceMissing);
         priceInput.classList.toggle('invalid', priceMissing);
@@ -622,7 +743,8 @@
             qty,
             priceText: priceInput.value,
             pricePence: perUnitBeforePence,
-            complete: false
+            complete: false,
+            meaningful: rowHasMeaningfulData
           };
         }
 
@@ -639,7 +761,8 @@
           perUnitDiffPence,
           totalBeforePence,
           totalAfterPence,
-          totalDiffPence
+          totalDiffPence,
+          serviceId
         });
 
         return {
@@ -654,7 +777,8 @@
           totalBeforePence,
           totalAfterPence,
           totalDiffPence,
-          complete: true
+          complete: true,
+          meaningful: rowHasMeaningfulData
         };
       });
     }
@@ -676,12 +800,32 @@
       let totalBefore = 0;
       let totalAfter = 0;
       const cliValues = [];
+      let missingTypeCount = 0;
+      const breakdownByType = {};
 
       rows.forEach((row) => {
         if (row.cli) cliValues.push(row.cli);
+        if (row.meaningful && !row.serviceId) missingTypeCount += 1;
         if (!row.complete) return;
+
         totalBefore += row.totalBeforePence;
         totalAfter += row.totalAfterPence;
+
+        if (!breakdownByType[row.serviceId]) {
+          breakdownByType[row.serviceId] = {
+            serviceId: row.serviceId,
+            beforePence: 0,
+            afterPence: 0,
+            diffPence: 0,
+            count: 0
+          };
+        }
+
+        const bucket = breakdownByType[row.serviceId];
+        bucket.beforePence += row.totalBeforePence;
+        bucket.afterPence += row.totalAfterPence;
+        bucket.diffPence += row.totalDiffPence;
+        bucket.count += 1;
       });
 
       const diff = totalAfter - totalBefore;
@@ -711,12 +855,17 @@
       else if (diff < 0) totalDiffBoxEl.classList.add('diff-negative');
       else totalDiffBoxEl.classList.add('diff-zero');
 
+      renderRowWarnings(missingTypeCount);
+      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, breakdownByType, missingTypeCount };
+      renderBreakdownByServiceType(totals);
+      renderIncreaseDrivers(totals);
+
       analytics.totalIncrease += diff;
       localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
 
       saveRowsToStorage(rows);
 
-      return { totalBefore, totalAfter, diff, annualDiff, cliValues, rows };
+      return totals;
     }
 
     function buildExplanationText(totals) {
