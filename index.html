@@ -23,6 +23,7 @@
         <table>
           <thead>
             <tr>
+              <th class="col-move">Move</th>
               <th>Number/CLI</th>
               <th>Service name / description</th>
               <th>Service type</th>
@@ -61,6 +62,7 @@
         <button id="copyTableBtn" type="button">Copy table</button>
         <button id="copyCRMBtn" type="button">Copy CRM note</button>
         <button id="copyCustomerBtn" type="button">Copy customer explanation</button>
+        <button id="btnDownloadCsv" type="button">Download CSV</button>
       </div>
     </section>
 
@@ -81,6 +83,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite">Copied</div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>

@@ -145,42 +145,69 @@
     }
 
     /* Improve column widths for usability */
-    th:nth-child(1),
-    td:nth-child(1) {
-      min-width: 160px; /* Number/CLI */
-    }
-
     th:nth-child(2),
     td:nth-child(2) {
-      min-width: 320px;
+      min-width: 160px; /* Number/CLI */
     }
 
     th:nth-child(3),
     td:nth-child(3) {
-      min-width: 220px; /* Service type dropdown */
+      min-width: 320px;
     }
 
     th:nth-child(4),
     td:nth-child(4) {
-      min-width: 120px; /* Rule */
+      min-width: 220px; /* Service type dropdown */
     }
 
     th:nth-child(5),
     td:nth-child(5) {
-      min-width: 140px; /* Current monthly charge */
+      min-width: 120px; /* Rule */
     }
 
     th:nth-child(6),
     td:nth-child(6) {
+      min-width: 140px; /* Current monthly charge */
+    }
+
+    th:nth-child(7),
+    td:nth-child(7) {
       min-width: 70px; /* Quantity */
       text-align: center;
     }
 
-    th:nth-child(10),
-    td:nth-child(10) {
+    th:nth-child(11),
+    td:nth-child(11) {
       min-width: 120px; /* Actions column */
     }
 
+
+
+    .col-move {
+      width: 44px;
+      min-width: 44px !important;
+      text-align: center;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      background: transparent;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      padding: 0.25rem 0.45rem;
+      line-height: 1;
+      color: #4b5563;
+      min-width: 32px;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-chosen { background: rgba(0, 0, 0, 0.03); }
 
     th,
     td {
