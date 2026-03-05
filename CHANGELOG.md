@@ -1,3 +1,17 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
+
+## [0.0.20] - 2026-03-05
+### Added
+- Theme toggle (Light/Dark) with persistence.
+
+### Fixed
+- Breakdown table header contrast in dark mode by moving mini table header styling to theme-aware CSS classes.
+- Mini panel labels now inherit theme-aware text-muted colour for consistent readability in dark mode.
+
 ## [0.0.19] - 2026-03-05
 ### Added
 - None.
@@ -27,12 +41,6 @@
 - Refactored repo structure: moved CSS into `assets/styles.css` and JavaScript into `assets/app.js`.
 - Added `assets/fonts/` and `@font-face` scaffolding for OnAir font support (fonts added separately).
 - Updated repo documentation (README/AGENTS/CONTRIBUTING) to match the new structure and constraints.
-
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
 ## [0.0.15] - 2026-03-05
 ### Added

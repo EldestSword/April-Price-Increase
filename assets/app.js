@@ -1,5 +1,6 @@
-    const VERSION = '0.0.19';
+    const VERSION = '0.0.20';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
+    const THEME_KEY = 'april_2026_theme';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
     const SERVICE_TYPES = [
@@ -28,6 +29,7 @@
     const driversPanelEl = document.getElementById('driversPanel');
     const downloadCsvBtn = document.getElementById('btnDownloadCsv');
     const downloadPdfBtn = document.getElementById('btnDownloadPdf');
+    const themeToggleBtn = document.getElementById('themeToggle');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -37,6 +39,26 @@
     let importedAccountNumber = '';
     let importedCompanyName = '';
     let sortableInstance = null;
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      if (!themeToggleBtn) return;
+      if (theme === 'dark') {
+        themeToggleBtn.textContent = 'Light mode';
+        themeToggleBtn.setAttribute('aria-label', 'Switch to light mode');
+        return;
+      }
+      themeToggleBtn.textContent = 'Dark mode';
+      themeToggleBtn.setAttribute('aria-label', 'Switch to dark mode');
+    }
+
+    function getInitialTheme() {
+      const storedTheme = localStorage.getItem(THEME_KEY);
+      if (storedTheme === 'light' || storedTheme === 'dark') {
+        return storedTheme;
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
 
     function poundsToPence(str) {
       const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
@@ -140,13 +162,13 @@
 
       breakdownPanelEl.innerHTML = `
         <strong style="display:block;margin-bottom:0.4rem;">Breakdown by service type</strong>
-        <table style="width:100%;min-width:0;font-size:0.84rem;border-collapse:collapse;">
+        <table class="mini-table">
           <thead>
             <tr>
-              <th style="position:static;background:#f9fafb;">Service type</th>
-              <th style="position:static;background:#f9fafb;">Before</th>
-              <th style="position:static;background:#f9fafb;">After</th>
-              <th style="position:static;background:#f9fafb;">Diff</th>
+              <th>Service type</th>
+              <th>Before</th>
+              <th>After</th>
+              <th>Diff</th>
             </tr>
           </thead>
           <tbody>${rows}
@@ -183,9 +205,9 @@
 
       driversPanelEl.innerHTML = `
         <strong style="display:block;margin-bottom:0.4rem;">Biggest drivers of increase</strong>
-        <div style="font-size:0.85rem;color:#374151;">By service type</div>
+        <div class="mini-label">By service type</div>
         <ul style="margin:0.2rem 0 0.5rem 1.1rem;padding:0;">${typeItems}</ul>
-        <div style="font-size:0.85rem;color:#374151;">By service line</div>
+        <div class="mini-label">By service line</div>
         <ul style="margin:0.2rem 0 0 1.1rem;padding:0;">${rowItems}</ul>`;
     }
 
@@ -1319,6 +1341,17 @@
     });
 
     document.getElementById('versionDisplay').textContent = VERSION;
+
+    applyTheme(getInitialTheme());
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(THEME_KEY, nextTheme);
+        applyTheme(nextTheme);
+      });
+    }
 
     loadRowsFromStorage();
     initialiseSortableRows();
