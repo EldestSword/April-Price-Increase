@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.13] - 2026-03-05
+### Fixed
+- Restored missing LSR importer processing function after table refactor.
+- LSR uploads now correctly populate service rows again.
+
 ## [0.0.12] - 2026-03-05
 ### Changed
 - Removed per-unit columns from service table to simplify layout.

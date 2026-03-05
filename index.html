@@ -450,7 +450,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
-    const VERSION = '0.0.12';
+    const VERSION = '0.0.13';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -848,6 +848,157 @@
           priceText: row.priceText || ''
         });
       });
+    }
+
+
+    function normalisePIN(pinValue) {
+      const raw = String(pinValue || '').trim();
+      if (!raw) return '';
+
+      const digitsOnly = raw.replace(/\D/g, '');
+      if (digitsOnly) return digitsOnly;
+
+      if (/^\d+(\.\d+)?e\+?\d+$/i.test(raw)) {
+        const [mantissa, exponentPart] = raw.toLowerCase().split('e');
+        const exponent = parseInt(exponentPart.replace('+', ''), 10);
+        if (!Number.isFinite(exponent)) return '';
+
+        const [whole, frac = ''] = mantissa.split('.');
+        const combined = `${whole}${frac}`;
+        const decimalPlaces = frac.length;
+        const shift = exponent - decimalPlaces;
+        if (shift >= 0) return `${combined}${'0'.repeat(shift)}`;
+      }
+
+      return '';
+    }
+
+    function detectServiceType(desc, cli) {
+
+      const text = (desc || '').toLowerCase();
+
+      if (cli && cli.startsWith('M0')) return 'maintenance';
+
+      if (text.includes('wlr') || text.includes('pstn') || text.includes('single line'))
+        return 'wlr';
+
+      if (text.includes('isdn'))
+        return 'isdn';
+
+      if (text.includes('maintenance') || text.includes('care level'))
+        return 'maintenance';
+
+      if (text.includes('rack') || text.includes('co-location') || text.includes('colocation'))
+        return 'hosting';
+
+      if (text.includes('leased line') || text.includes('ethernet') || text.includes('mpls'))
+        return 'leased';
+
+      if (text.includes('microsoft') || text.includes('office 365'))
+        return 'microsoft';
+
+      return 'other';
+
+    }
+
+    function processLSRRows(rows) {
+
+      importedAccountNumber = '';
+      importedCompanyName = '';
+
+      let importedCount = 0;
+
+      const IGNORED_LSR_SERVICES = [
+        'charge for paper invoicing',
+        'non dd payer',
+        'recurring credit card charge'
+      ];
+
+      rows.forEach((row) => {
+
+        const serviceName =
+          row.ServiceDescription ||
+          row['Service Description'] ||
+          row.Description ||
+          row.Service ||
+          '';
+
+        const serviceNameLower = serviceName.toLowerCase();
+
+        if (IGNORED_LSR_SERVICES.some((service) => serviceNameLower.includes(service))) {
+
+          const accountPIN = normalisePIN(row.PIN);
+
+          if (accountPIN) importedAccountNumber = accountPIN;
+
+          if (row.CompanyName) {
+            importedCompanyName = String(row.CompanyName).trim();
+          }
+
+          return;
+        }
+
+        const cli = normalisePIN(row.PIN);
+
+        const desc = serviceName;
+
+        const qty = Math.max(
+          1,
+          parseInt(row.Quantity || row.Qty || 1, 10) || 1
+        );
+
+        const rawPrice =
+          row['Pre-discount Total Rate'] ||
+          row['Pre-discount Rate'] ||
+          row.Monthly ||
+          row.Rate ||
+          '';
+
+        const pricePence = poundsToPence(rawPrice);
+
+        if (!cli || !desc || !pricePence || pricePence <= 0) return;
+
+        addRow({
+          cli,
+          desc,
+          qty,
+          pricePence,
+          serviceId: detectServiceType(desc, cli)
+        });
+
+        importedCount++;
+
+      });
+
+      if (importedCount > 0) {
+        recalc();
+        tableWrapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      if (importedAccountNumber || importedCompanyName) {
+
+        const infoEl = document.getElementById('lsrAccountInfo');
+
+        if (infoEl) {
+
+          infoEl.textContent =
+            'Account: ' + (importedAccountNumber || 'Unknown') +
+            ' | Customer: ' + (importedCompanyName || 'Unknown');
+
+        }
+
+      }
+
+      analytics.imports += 1;
+      analytics.rowsProcessed += importedCount;
+
+      localStorage.setItem(
+        'billIncreaseAnalytics',
+        JSON.stringify(analytics)
+      );
+
+      showToast(`Imported ${importedCount} services from LSR`);
+
     }
 
     importBtn.addEventListener('click', () => fileInput.click());
