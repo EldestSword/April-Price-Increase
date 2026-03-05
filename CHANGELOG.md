@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.14] - 2026-03-05
+### Fixed
+- Restored robust LSR importer:
+  - Handles 4dp rates and converts to pence safely.
+  - Preserves maintenance PINs (M0...) and alphanumeric account refs.
+  - Expands scientific notation PINs (e.g. 1E+12).
+  - Restores missing leading zeros on UK numbers.
+  - Removes starter blank row before importing.
+
 ## [0.0.13] - 2026-03-05
 ### Fixed
 - Restored missing LSR importer processing function after table refactor.
