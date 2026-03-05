@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.15] - 2026-03-05
+### Added
+- Per-row Rule column showing uplift logic (+£12.50 / +% / No increase).
+- Breakdown by service type (before/after/diff).
+- Biggest drivers panel (top service types and service lines by increase).
+- Missing service type warning banner for quick cleanup after import.
+
 ## [0.0.14] - 2026-03-05
 ### Fixed
 - Restored robust LSR importer:
