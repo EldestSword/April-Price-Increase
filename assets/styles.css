@@ -53,6 +53,7 @@
   --diff-pos-text: #0f6a36;
   --diff-neg-bg: rgba(255, 230, 235, 0.8);
   --diff-neg-text: #9d1935;
+  --mini-head-bg: color-mix(in oklab, var(--glass-strong) 88%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,6 +81,58 @@
     --diff-neg-bg: rgba(112, 15, 40, 0.55);
     --diff-neg-text: #ffc8d2;
   }
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #edf3ff;
+  --bg-2: #f8fbff;
+  --text: #0f172a;
+  --text-muted: #52607a;
+  --border: rgba(112, 133, 168, 0.34);
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-soft: rgba(247, 250, 255, 0.85);
+  --accent: #1f6fff;
+  --accent-2: #1ab7a7;
+  --accent-contrast: #ffffff;
+  --danger: #ba3148;
+  --focus: rgba(31, 111, 255, 0.4);
+  --shadow-sm: 0 10px 26px rgba(40, 63, 97, 0.12);
+  --shadow-md: 0 16px 36px rgba(26, 45, 77, 0.16);
+  --shadow-lg: 0 28px 54px rgba(18, 30, 55, 0.18);
+  --diff-pos-bg: rgba(221, 250, 233, 0.75);
+  --diff-pos-text: #0f6a36;
+  --diff-neg-bg: rgba(255, 230, 235, 0.8);
+  --diff-neg-text: #9d1935;
+  --mini-head-bg: color-mix(in oklab, var(--glass-strong) 88%, transparent);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #090f1d;
+  --bg-2: #111b30;
+  --text: #edf4ff;
+  --text-muted: #adc0df;
+  --border: rgba(126, 154, 204, 0.34);
+  --glass: rgba(17, 31, 57, 0.64);
+  --glass-strong: rgba(15, 24, 46, 0.82);
+  --surface: rgba(17, 31, 57, 0.88);
+  --surface-soft: rgba(23, 38, 68, 0.76);
+  --accent: #6ca7ff;
+  --accent-2: #54dccf;
+  --accent-contrast: #081123;
+  --danger: #ff728b;
+  --focus: rgba(108, 167, 255, 0.45);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 14px 40px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 22px 64px rgba(0, 0, 0, 0.56);
+  --diff-pos-bg: rgba(11, 84, 48, 0.5);
+  --diff-pos-text: #a7f3cc;
+  --diff-neg-bg: rgba(112, 15, 40, 0.55);
+  --diff-neg-text: #ffc8d2;
+  --mini-head-bg: color-mix(in oklab, var(--glass-strong) 88%, transparent);
 }
 
 * {
@@ -165,6 +218,10 @@ h1 {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.theme-toggle {
+  white-space: nowrap;
+}
+
 .source-link:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
@@ -242,6 +299,30 @@ thead th {
   background: color-mix(in oklab, var(--glass-strong) 88%, transparent);
   text-align: left;
   white-space: nowrap;
+}
+
+.mini-table {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.84rem;
+  border-collapse: collapse;
+}
+
+.mini-table th,
+.mini-table td {
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mini-table thead th {
+  position: static;
+  background: var(--mini-head-bg);
+  color: var(--text);
+}
+
+.mini-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 th:last-child,
