@@ -1,4 +1,4 @@
-    const VERSION = '0.0.17';
+    const VERSION = '0.0.18';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -27,6 +27,7 @@
     const breakdownPanelEl = document.getElementById('breakdownPanel');
     const driversPanelEl = document.getElementById('driversPanel');
     const downloadCsvBtn = document.getElementById('btnDownloadCsv');
+    const downloadPdfBtn = document.getElementById('btnDownloadPdf');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -585,6 +586,306 @@
       URL.revokeObjectURL(url);
     }
 
+    function buildPdfFilename() {
+      const date = new Date().toISOString().slice(0, 10);
+      const accountPart = sanitiseFilenamePart(importedAccountNumber, 'UnknownAccount');
+      return `April-2026-Price-Increase_${accountPart}_${date}.pdf`;
+    }
+
+    function downloadPdf(pdfBytes, filename) {
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function topDriversByServiceType(totals) {
+      return Object.values(totals.breakdownByType || {})
+        .sort((a, b) => b.diffPence - a.diffPence)
+        .slice(0, 3);
+    }
+
+    function topDriversByServiceLine(totals) {
+      return (totals.rows || [])
+        .filter((row) => row.complete)
+        .slice()
+        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
+        .slice(0, 3);
+    }
+
+    async function buildPdfFromTotals(totals) {
+      if (!window.PDFLib || !window.fontkit) {
+        throw new Error('PDF libraries are unavailable.');
+      }
+
+      const { PDFDocument, rgb } = window.PDFLib;
+      const regularFontBytes = await fetch('assets/fonts/OnAir-Regular.woff2').then((response) => {
+        if (!response.ok) throw new Error('Could not load OnAir Regular font.');
+        return response.arrayBuffer();
+      });
+      const boldFontBytes = await fetch('assets/fonts/OnAir-Bold.woff2').then((response) => {
+        if (!response.ok) throw new Error('Could not load OnAir Bold font.');
+        return response.arrayBuffer();
+      });
+
+      const pdfDoc = await PDFDocument.create();
+      pdfDoc.registerFontkit(window.fontkit);
+
+      const onAirRegular = await pdfDoc.embedFont(regularFontBytes);
+      const onAirBold = await pdfDoc.embedFont(boldFontBytes);
+
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+      const margin = 36;
+      const contentWidth = pageWidth - (margin * 2);
+
+      const titleSize = 18;
+      const headerSize = 12;
+      const bodySize = 10;
+      const smallSize = 8;
+      const lineGap = 4;
+      const sectionGap = 14;
+
+      let page = pdfDoc.addPage([pageWidth, pageHeight]);
+      let cursorY = pageHeight - margin;
+
+      const ensureSpace = (heightNeeded) => {
+        if ((cursorY - heightNeeded) < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          cursorY = pageHeight - margin;
+          return true;
+        }
+        return false;
+      };
+
+      const drawText = (text, x, y, options = {}) => {
+        page.drawText(text, {
+          x,
+          y,
+          size: options.size || bodySize,
+          font: options.font || onAirRegular,
+          color: options.color || rgb(0.1, 0.1, 0.1)
+        });
+      };
+
+      const splitLinesByWidth = (text, font, size, width) => {
+        const raw = String(text || '').trim();
+        if (!raw) return [''];
+
+        const words = raw.split(/\s+/);
+        const lines = [];
+        let current = '';
+
+        words.forEach((word) => {
+          const candidate = current ? `${current} ${word}` : word;
+          if (font.widthOfTextAtSize(candidate, size) <= width) {
+            current = candidate;
+            return;
+          }
+
+          if (current) lines.push(current);
+
+          if (font.widthOfTextAtSize(word, size) <= width) {
+            current = word;
+            return;
+          }
+
+          let chunk = '';
+          for (const char of word) {
+            const withChar = `${chunk}${char}`;
+            if (font.widthOfTextAtSize(withChar, size) <= width) {
+              chunk = withChar;
+            } else {
+              if (chunk) lines.push(chunk);
+              chunk = char;
+            }
+          }
+          current = chunk;
+        });
+
+        if (current) lines.push(current);
+        return lines.length ? lines : [''];
+      };
+
+      const drawParagraph = (text, options = {}) => {
+        const size = options.size || bodySize;
+        const font = options.font || onAirRegular;
+        const maxWidth = options.maxWidth || contentWidth;
+        const paragraphLineHeight = size + (options.gap ?? lineGap);
+        const lines = String(text || '').split('\n').flatMap((line) => splitLinesByWidth(line, font, size, maxWidth));
+
+        ensureSpace(lines.length * paragraphLineHeight);
+        lines.forEach((line) => {
+          drawText(line, margin, cursorY - size, { size, font });
+          cursorY -= paragraphLineHeight;
+        });
+      };
+
+      const trimToWidth = (text, font, size, width, maxLines = 1) => {
+        const raw = String(text || '—').trim() || '—';
+        const lines = splitLinesByWidth(raw, font, size, width);
+        if (lines.length <= maxLines) return lines;
+        const clipped = lines.slice(0, maxLines);
+        let last = clipped[maxLines - 1] || '';
+        while (last.length > 1 && font.widthOfTextAtSize(`${last}…`, size) > width) {
+          last = last.slice(0, -1);
+        }
+        clipped[maxLines - 1] = `${last}…`;
+        return clipped;
+      };
+
+      drawText('April 2026 Bill Increase Explainer', margin, cursorY - titleSize, { size: titleSize, font: onAirBold });
+      cursorY -= titleSize + sectionGap;
+
+      const meta = `Customer: ${importedCompanyName || 'Unknown'} | Account: ${importedAccountNumber || 'Unknown'} | Exported: ${new Date().toLocaleString('en-GB')}`;
+      drawParagraph(meta, { size: bodySize, font: onAirRegular });
+      cursorY -= 6;
+
+      ensureSpace(92);
+      page.drawRectangle({
+        x: margin,
+        y: cursorY - 86,
+        width: contentWidth,
+        height: 86,
+        borderWidth: 1,
+        borderColor: rgb(0.85, 0.88, 0.92),
+        color: rgb(0.98, 0.99, 1)
+      });
+      drawText('Totals', margin + 10, cursorY - 18, { size: headerSize, font: onAirBold });
+      const totalLines = [
+        `Total before: ${formatGBP(totals.totalBefore)}`,
+        `Total after: ${formatGBP(totals.totalAfter)}`,
+        `Monthly difference: ${formatGBP(totals.diff)}`,
+        `Annual increase: ${formatGBP(totals.annualDiff)}`
+      ];
+      totalLines.forEach((line, index) => drawText(line, margin + 10, cursorY - 36 - (index * 14), { size: bodySize }));
+      cursorY -= 100;
+
+      drawText('Breakdown by service type', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
+      cursorY -= headerSize + 8;
+      const typeRows = Object.values(totals.breakdownByType || {}).sort((a, b) => b.diffPence - a.diffPence);
+      if (!typeRows.length) {
+        drawParagraph('No complete service rows.', { size: bodySize });
+      } else {
+        typeRows.forEach((entry) => {
+          ensureSpace(14);
+          const line = `${getShortServiceLabel(entry.serviceId)} | Count ${entry.count} | Before ${formatGBP(entry.beforePence)} | After ${formatGBP(entry.afterPence)} | Diff ${formatGBP(entry.diffPence)}`;
+          drawText(line, margin, cursorY - bodySize, { size: bodySize });
+          cursorY -= 14;
+        });
+      }
+      cursorY -= 8;
+
+      drawText('Biggest drivers of increase', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
+      cursorY -= headerSize + 8;
+
+      drawText('By service type:', margin, cursorY - bodySize, { size: bodySize, font: onAirBold });
+      cursorY -= 14;
+      topDriversByServiceType(totals).forEach((entry) => {
+        ensureSpace(14);
+        drawText(`• ${getShortServiceLabel(entry.serviceId)}: ${formatGBP(entry.diffPence)}`, margin + 8, cursorY - bodySize, { size: bodySize });
+        cursorY -= 14;
+      });
+
+      drawText('By service line:', margin, cursorY - bodySize, { size: bodySize, font: onAirBold });
+      cursorY -= 14;
+      topDriversByServiceLine(totals).forEach((row) => {
+        ensureSpace(14);
+        const ref = row.desc || row.cli || 'Service';
+        drawText(`• ${truncateText(ref, 80)}: ${formatGBP(row.totalDiffPence)}`, margin + 8, cursorY - bodySize, { size: bodySize });
+        cursorY -= 14;
+      });
+
+      cursorY -= 8;
+      drawText('Service lines', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
+      cursorY -= headerSize + 8;
+
+      const tableColumns = [
+        { key: 'cli', title: 'Number/CLI', width: 80 },
+        { key: 'desc', title: 'Description', width: 115 },
+        { key: 'type', title: 'Service type', width: 70 },
+        { key: 'rule', title: 'Rule', width: 45 },
+        { key: 'qty', title: 'Qty', width: 28 },
+        { key: 'before', title: 'Before', width: 52 },
+        { key: 'after', title: 'After', width: 52 },
+        { key: 'diff', title: 'Diff', width: 45 }
+      ];
+
+      const tableRowHeight = 14;
+      const drawTableHeader = () => {
+        ensureSpace(tableRowHeight + 2);
+        let x = margin;
+        tableColumns.forEach((column) => {
+          drawText(column.title, x + 1, cursorY - bodySize, { size: bodySize, font: onAirBold });
+          x += column.width;
+        });
+        cursorY -= tableRowHeight;
+      };
+
+      drawTableHeader();
+      const completeRows = (totals.rows || []).filter((row) => row.complete);
+      completeRows.forEach((row) => {
+        const values = {
+          cli: row.cli || '—',
+          desc: row.desc || '—',
+          type: getShortServiceLabel(row.serviceId),
+          rule: getServiceRuleLabel(row.serviceId),
+          qty: String(row.qty),
+          before: formatGBP(row.totalBeforePence),
+          after: formatGBP(row.totalAfterPence),
+          diff: formatGBP(row.totalDiffPence)
+        };
+
+        const cliLines = trimToWidth(values.cli, onAirRegular, bodySize, tableColumns[0].width - 3, 1);
+        const descLines = trimToWidth(values.desc, onAirRegular, bodySize, tableColumns[1].width - 3, 2);
+        const dynamicHeight = Math.max(tableRowHeight, Math.max(cliLines.length, descLines.length) * tableRowHeight);
+
+        if ((cursorY - dynamicHeight) < margin + 30) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          cursorY = pageHeight - margin;
+          drawTableHeader();
+        }
+
+        const lineValues = [
+          cliLines,
+          descLines,
+          trimToWidth(values.type, onAirRegular, bodySize, tableColumns[2].width - 3, 1),
+          trimToWidth(values.rule, onAirRegular, bodySize, tableColumns[3].width - 3, 1),
+          trimToWidth(values.qty, onAirRegular, bodySize, tableColumns[4].width - 3, 1),
+          trimToWidth(values.before, onAirRegular, bodySize, tableColumns[5].width - 3, 1),
+          trimToWidth(values.after, onAirRegular, bodySize, tableColumns[6].width - 3, 1),
+          trimToWidth(values.diff, onAirRegular, bodySize, tableColumns[7].width - 3, 1)
+        ];
+
+        let x = margin;
+        lineValues.forEach((lines, columnIndex) => {
+          lines.forEach((line, lineIndex) => {
+            drawText(line, x + 1, cursorY - bodySize - (lineIndex * tableRowHeight), { size: bodySize });
+          });
+          x += tableColumns[columnIndex].width;
+        });
+        cursorY -= dynamicHeight;
+      });
+
+      const disclaimerLines = [
+        'This is an estimate and only applies where the April 2026 increase is not already specified in the customer’s contract terms.',
+        'Before advising a customer, verify which price increase letter they received in Daisy Central (under “Important information about your Daisy Service”). Some customers/services may be excluded.'
+      ];
+
+      ensureSpace(40);
+      cursorY -= 6;
+      drawText('Disclaimer', margin, cursorY - smallSize, { size: smallSize, font: onAirBold });
+      cursorY -= 12;
+      disclaimerLines.forEach((line) => drawParagraph(line, { size: smallSize, maxWidth: contentWidth, gap: 2 }));
+
+      return pdfDoc.save();
+    }
+
     function initialiseSortableRows() {
       if (!window.Sortable || sortableInstance) return;
       sortableInstance = new Sortable(rowsEl, {
@@ -956,6 +1257,24 @@
       const csvText = buildCsvFromComputedRows(totals);
       downloadCsv(csvText, buildCsvFilename());
       showToast('CSV downloaded');
+    });
+
+    downloadPdfBtn.addEventListener('click', async () => {
+      const totals = recalc();
+      const completeRows = totals.rows.filter((row) => row.complete);
+      if (!completeRows.length) {
+        showToast('Nothing to export yet.');
+        return;
+      }
+
+      try {
+        const pdfBytes = await buildPdfFromTotals(totals);
+        downloadPdf(pdfBytes, buildPdfFilename());
+        showToast('PDF downloaded');
+      } catch (error) {
+        const message = (error && error.message) ? error.message : 'Could not create PDF export.';
+        showToast(message);
+      }
     });
 
     rowsEl.addEventListener('input', (event) => {
