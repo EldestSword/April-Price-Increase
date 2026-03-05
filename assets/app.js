@@ -1,4 +1,4 @@
-    const VERSION = '0.0.18';
+    const VERSION = '0.0.19';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
