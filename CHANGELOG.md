@@ -1,3 +1,7 @@
+## [0.0.18] - 2026-03-05
+### Added
+- Branded PDF export (OnAir font) including totals, breakdown, drivers, and service lines.
+
 ## [0.0.17] - 2026-03-05
 ### Added
 - Drag-and-drop row reordering with a dedicated move handle column (order persists).
