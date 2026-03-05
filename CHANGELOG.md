@@ -1,3 +1,18 @@
+## [0.0.19] - 2026-03-05
+### Added
+- None.
+
+### Changed
+- Premium UI revamp (visual-only) with a modern glass-style dashboard aesthetic across header, cards, table, controls, and toast.
+- Added light/dark colour-scheme support with tuned gradients, contrast, and focus visibility.
+- Refined totals area into a sticky control strip with upgraded total cards and polished diff-state styling.
+
+### Fixed
+- Preserved accessibility and readability for smaller viewports while keeping desktop-first layout density.
+
+### Removed
+- None.
+
 ## [0.0.18] - 2026-03-05
 ### Added
 - Branded PDF export (OnAir font) including totals, breakdown, drivers, and service lines.
