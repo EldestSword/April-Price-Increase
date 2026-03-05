@@ -1,3 +1,9 @@
+## [0.0.16] - 2026-03-05
+### Changed
+- Refactored repo structure: moved CSS into `assets/styles.css` and JavaScript into `assets/app.js`.
+- Added `assets/fonts/` and `@font-face` scaffolding for OnAir font support (fonts added separately).
+- Updated repo documentation (README/AGENTS/CONTRIBUTING) to match the new structure and constraints.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

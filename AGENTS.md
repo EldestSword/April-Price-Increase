@@ -12,9 +12,11 @@ This repo is not a billing engine, not a policy wiki, and not a place to recreat
 
 ## Project constraints
 
-- **Single-file app:** `index.html` contains HTML + CSS + vanilla JS.
-- **No external libraries** (no CDN, no build step, no frameworks).
-- **Offline-friendly:** must run by opening `index.html` in a browser.
+- **Static app structure:** `index.html` + `assets/styles.css` + `assets/app.js`.
+- **Offline-friendly when served as static files:** use a simple local static server or Codespaces preview for best compatibility.
+- **No build step or frameworks:** keep it plain HTML/CSS/vanilla JS.
+- **External library policy:** XLSX via CDN is allowed for LSR import, and it must load before `assets/app.js`.
+- **Future improvement:** vendor/remove CDN dependency later if required, but do not assume that has already been done.
 - **British English** and **£** currency formatting.
 - **Pence-safe maths:** do all calculations in **integer pence**.
 
@@ -35,7 +37,7 @@ Bump versions like:
 - Use clear bullet points under **Added / Changed / Fixed / Removed**.
 
 ### 3) Keep rules explicit and central
-Service rules must remain in one simple config structure inside `index.html` (currently `SERVICE_TYPES`).
+Service rules must remain in one simple config structure in app code (currently `SERVICE_TYPES` in `assets/app.js`).
 If rules change, update that config and keep labels explicit.
 
 ### 4) Preserve the “quick call” flow
@@ -70,5 +72,11 @@ The following must remain:
 - If you add UI, keep it accessible: sensible focus states, no alert() popups.
 
 ## Output format when responding as Codex
-When returning changes, output the **full updated `index.html`** (not patches).
-If you changed docs, output the full updated files too.
+When returning changes, output the **full updated files that changed** (not patches).
+Expected files for restructure/doc updates include:
+- `index.html`
+- `assets/styles.css`
+- `assets/app.js`
+- `VERSION`
+- `CHANGELOG.md`
+- Any docs touched (`AGENTS.md`, `README.md`, `CONTRIBUTING.md`, etc.)
