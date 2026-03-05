@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).
 
+## [0.0.12] - 2026-03-05
+### Changed
+- Removed per-unit columns from service table to simplify layout.
+- Expanded service description column for better readability.
+
+### Improved
+- Customer explanation now includes the services contributing most to the increase.
+- Removed row colour coding to reduce visual noise.
+
+### Kept
+- Largest increase row highlighting.
+
 ## [0.0.11] - 2026-03-04
 ### Added
 - Sticky totals bar for easier viewing while scrolling.

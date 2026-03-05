@@ -134,7 +134,7 @@
 
     th:nth-child(2),
     td:nth-child(2) {
-      min-width: 180px; /* Service description */
+      min-width: 320px;
     }
 
     th:nth-child(3),
@@ -300,18 +300,6 @@
       z-index: 5;
     }
 
-    .row-diff-pos {
-      background: #effaf3;
-    }
-
-    .row-diff-neg {
-      background: #fff4f3;
-    }
-
-    .row-diff-zero {
-      background: #fcfcfd;
-    }
-
     .largest-increase {
       outline: 2px solid #1d4ed8;
     }
@@ -410,9 +398,6 @@
               <th>Service type</th>
               <th>Current monthly charge (£)</th>
               <th>Qty</th>
-              <th>Before (unit)</th>
-              <th>After (unit)</th>
-              <th>Diff (unit)</th>
               <th>Before (total)</th>
               <th>After (total)</th>
               <th>Diff (total)</th>
@@ -465,7 +450,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
-    const VERSION = '0.0.11';
+    const VERSION = '0.0.12';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -554,9 +539,6 @@
           <div class="error priceError">Enter a valid price</div>
         </td>
         <td><input class="qty" type="number" min="1" step="1" value="${data.qty || 1}" /></td>
-        <td data-field="beforeUnit">${computedCell()}</td>
-        <td data-field="afterUnit">${computedCell()}</td>
-        <td data-field="diffUnit">${computedCell()}</td>
         <td data-field="beforeTotal">${computedCell()}</td>
         <td data-field="afterTotal">${computedCell()}</td>
         <td data-field="diffTotal">${computedCell()}</td>
@@ -588,22 +570,13 @@
       };
 
       if (!model.complete) {
-        ['beforeUnit', 'afterUnit', 'diffUnit', 'beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
-        row.classList.remove('row-diff-pos', 'row-diff-neg', 'row-diff-zero');
+        ['beforeTotal', 'afterTotal', 'diffTotal'].forEach((field) => setField(field, '—'));
         return;
       }
 
-      setField('beforeUnit', formatGBP(model.perUnitBeforePence));
-      setField('afterUnit', formatGBP(model.perUnitAfterPence));
-      setField('diffUnit', formatGBP(model.perUnitDiffPence));
       setField('beforeTotal', formatGBP(model.totalBeforePence));
       setField('afterTotal', formatGBP(model.totalAfterPence));
       setField('diffTotal', formatGBP(model.totalDiffPence));
-
-      row.classList.remove('row-diff-pos', 'row-diff-neg', 'row-diff-zero');
-      if (model.totalDiffPence > 0) row.classList.add('row-diff-pos');
-      else if (model.totalDiffPence < 0) row.classList.add('row-diff-neg');
-      else row.classList.add('row-diff-zero');
     }
 
     function readRows() {
@@ -798,203 +771,36 @@
     }
 
     function buildCustomerExplanation(totals) {
+
       const lines = [];
 
       lines.push(`Your current monthly bill is ${formatGBP(totals.totalBefore)}.`);
       lines.push('');
+
       lines.push(`From April 2026 this will change to approximately ${formatGBP(totals.totalAfter)}.`);
       lines.push('');
+
       lines.push(`This represents an increase of ${formatGBP(totals.diff)} per month.`);
       lines.push('');
-      lines.push('This estimate is based on the standard April 2026 pricing adjustments.');
 
-      return lines.join('\n');
-    }
+      const keyRows = totals.rows
+        .filter((r) => r.complete)
+        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
+        .slice(0, 3);
 
-    function buildCopyTableText(rows) {
-      const validRows = rows.filter((row) => row.complete);
-      const heading = ['CLI', 'Service description', 'Service type', 'Qty', 'Before total', 'After total', 'Diff total'];
-      const tsvRows = [heading.join('\t')];
+      if (keyRows.length) {
+        lines.push('The increase mainly affects the following services:');
 
-      validRows.forEach((row) => {
-        tsvRows.push([
-          row.cli || '—',
-          row.desc || '—',
-          getServiceLabel(row.serviceId),
-          String(row.qty),
-          formatGBP(row.totalBeforePence),
-          formatGBP(row.totalAfterPence),
-          formatGBP(row.totalDiffPence)
-        ].join('\t'));
-      });
-
-      if (validRows.length === 0) {
-        tsvRows.push('—\t—\t—\t—\t—\t—\t—');
-      }
-
-      return tsvRows.join('\n');
-    }
-
-    const IGNORED_LSR_SERVICES = [
-      'charge for paper invoicing',
-      'non dd payer',
-      'recurring credit card charge'
-    ];
-
-    function detectMaintenancePIN(pin) {
-      return pin && pin.startsWith('M0');
-    }
-
-    function detectServiceType(desc, cli) {
-      const text = (desc || '').toLowerCase();
-
-      if (detectMaintenancePIN(cli)) return 'maintenance';
-      if (text.includes('wlr') || text.includes('pstn') || text.includes('single line')) return 'wlr';
-      if (text.includes('isdn')) return 'isdn';
-      if (text.includes('maintenance') || text.includes('care level')) return 'maintenance';
-      if (text.includes('rack') || text.includes('co-location') || text.includes('colocation')) return 'hosting';
-      if (text.includes('leased line') || text.includes('ethernet') || text.includes('mpls')) return 'leased';
-      if (text.includes('microsoft') || text.includes('office 365')) return 'microsoft';
-
-      return 'other';
-    }
-
-    function parseImportPriceToPence(rawPrice) {
-      const cleaned = String(rawPrice ?? '').replace(/[^0-9.\-]/g, '');
-      if (!cleaned) return null;
-      const numeric = Number.parseFloat(cleaned);
-      if (!Number.isFinite(numeric) || numeric <= 0) return null;
-      return Math.round(numeric * 100);
-    }
-
-    function normalisePIN(rawPin) {
-      if (!rawPin) return '';
-
-      let pin = String(rawPin).trim();
-
-      const sciMatch = pin.match(/^([0-9.]+)e\+([0-9]+)$/i);
-
-      if (sciMatch) {
-        const base = sciMatch[1].replace('.', '');
-        const exponent = parseInt(sciMatch[2], 10);
-
-        const digits = base.length;
-        const zerosNeeded = exponent - (digits - 1);
-
-        if (zerosNeeded > 0) {
-          pin = base + '0'.repeat(zerosNeeded);
-        } else {
-          pin = base;
-        }
-      }
-
-      pin = pin.replace(/\.0+$/, '');
-
-      if (sciMatch && /^[12378]\d{10}$/.test(pin) && pin.endsWith('0')) {
-        pin = pin.slice(0, -1);
-      }
-
-      if (/^[12378]\d{9}$/.test(pin)) {
-        pin = '0' + pin;
-      }
-
-      if (/^7\d{9}$/.test(pin)) {
-        pin = '0' + pin;
-      }
-
-      if (pin.length > 15 && pin.includes('0000000000')) {
-        console.warn('Possible Excel precision loss on PIN:', pin);
-      }
-
-      return pin;
-    }
-
-    function addImportedRow(data) {
-      addRow({
-        cli: data.cli,
-        desc: data.desc,
-        qty: data.qty,
-        pricePence: data.pricePence,
-        serviceId: data.serviceType
-      });
-    }
-
-    function processLSRRows(rows) {
-      let importedCount = 0;
-      importedAccountNumber = '';
-      importedCompanyName = '';
-
-      const existingRows = Array.from(rowsEl.querySelectorAll('tr'));
-
-      if (existingRows.length === 1) {
-        const starterRow = existingRows[0];
-
-        const starterIsEmpty = !starterRow.querySelector('.cli').value.trim()
-          && !starterRow.querySelector('.serviceDesc').value.trim()
-          && !starterRow.querySelector('.serviceType').value
-          && !starterRow.querySelector('.price').value.trim();
-
-        if (starterIsEmpty) starterRow.remove();
-      }
-
-      rows.forEach((row) => {
-        const serviceName = row.ServiceDescription || row['Service Description'] || row.Description || row.Service || '';
-        const serviceNameLower = serviceName.toLowerCase();
-
-        if (IGNORED_LSR_SERVICES.some((service) => serviceNameLower.includes(service))) {
-          const accountPIN = normalisePIN(row.PIN || row.Pin || row.CLI || row.Number || '');
-          if (accountPIN) importedAccountNumber = accountPIN;
-
-          if (row.CompanyName) {
-            importedCompanyName = String(row.CompanyName).trim();
-          }
-
-          return;
-        }
-
-        const cli = normalisePIN(row.PIN || row.Pin || row.CLI || row.Number || '');
-        const desc = serviceName;
-        const qty = Math.max(1, parseInt(row.Quantity || row.Qty || 1, 10) || 1);
-
-        const rawPrice = row['Pre-discount Total Rate'] || row['Pre-discount Rate'] || row.Monthly || row.Rate || '';
-        const pricePence = parseImportPriceToPence(rawPrice);
-
-        if (!cli || !desc || !pricePence || pricePence <= 0) return;
-
-        addImportedRow({
-          cli,
-          desc: String(desc).trim(),
-          qty,
-          pricePence,
-          serviceType: detectServiceType(desc, cli)
+        keyRows.forEach((r) => {
+          lines.push(`• ${r.desc || r.cli || 'Service'} – ${formatGBP(r.totalBeforePence)} → ${formatGBP(r.totalAfterPence)}`);
         });
 
-        importedCount += 1;
-      });
-
-      if (importedAccountNumber || importedCompanyName) {
-        const infoEl = document.getElementById('lsrAccountInfo');
-        if (infoEl) {
-          infoEl.textContent = `Account: ${importedAccountNumber || 'Unknown'} | Customer: ${importedCompanyName || 'Unknown'}`;
-        }
+        lines.push('');
       }
 
-      analytics.imports += 1;
-      analytics.rowsProcessed += importedCount;
-      localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
+      lines.push('These changes are part of the standard April 2026 pricing adjustments.');
 
-      if (importedCount > 0) {
-        recalc();
-        tableWrapEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      showToast(`Imported ${importedCount} services from LSR`);
-    }
-
-    function showToast(message = 'Copied') {
-      toastEl.textContent = message;
-      toastEl.classList.add('show');
-      setTimeout(() => toastEl.classList.remove('show'), 1200);
+      return lines.join('\n');
     }
 
     async function copyText(text) {
