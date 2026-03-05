@@ -22,8 +22,10 @@ A quick, call-friendly calculator so agents can explain April 2026 bill increase
    - Why it changed
    - Screenshots if the UI changed (optional but helpful)
 
-## Code style
-- No dependencies
+## Technical constraints
+- Static site (`index.html` + `assets/`)
+- No build tooling
+- Minimal dependencies (XLSX CDN for LSR import, loaded before `assets/app.js`)
 - Vanilla JS
 - Pence-safe integer maths
 - British English
