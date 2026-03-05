@@ -1,4 +1,4 @@
-    const VERSION = '0.0.16';
+    const VERSION = '0.0.17';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
@@ -26,6 +26,7 @@
     const rowWarningsEl = document.getElementById('rowWarnings');
     const breakdownPanelEl = document.getElementById('breakdownPanel');
     const driversPanelEl = document.getElementById('driversPanel');
+    const downloadCsvBtn = document.getElementById('btnDownloadCsv');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -34,6 +35,7 @@
 
     let importedAccountNumber = '';
     let importedCompanyName = '';
+    let sortableInstance = null;
 
     function poundsToPence(str) {
       const cleaned = (str || '').toString().replace(/£|,/g, '').trim();
@@ -189,6 +191,7 @@
     function addRow(data = {}) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td class="col-move"><button type="button" class="drag-handle" aria-label="Reorder row" title="Drag to reorder">☰</button></td>
         <td><input class="cli" type="text" placeholder="0161… / CLI" value="${data.cli || ''}" /></td>
         <td><input class="serviceDesc" type="text" placeholder="Optional service name" value="${data.desc || ''}" /></td>
         <td>
@@ -499,6 +502,128 @@
 
       lines.push('These changes are part of the standard April 2026 pricing adjustments.');
 
+      return lines.join('\n');
+    }
+
+
+    function formatPoundsPlain(penceInt) {
+      const sign = penceInt < 0 ? '-' : '';
+      const abs = Math.abs(penceInt);
+      const pounds = Math.floor(abs / 100);
+      const pence = String(abs % 100).padStart(2, '0');
+      return `${sign}${pounds}.${pence}`;
+    }
+
+    function escapeCsvField(value) {
+      const text = String(value ?? '');
+      if (!/[",\r\n]/.test(text)) return text;
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function buildCsvFromComputedRows(result) {
+      const completeRows = (result?.rows || []).filter((row) => row.complete);
+      const csvRows = [];
+
+      if (importedCompanyName || importedAccountNumber) {
+        csvRows.push(`# Customer: ${importedCompanyName || 'Unknown'} | Account: ${importedAccountNumber || 'Unknown'}`);
+      }
+      csvRows.push(`# Exported: ${new Date().toLocaleString('en-GB')}`);
+
+      const headers = [
+        'Number/CLI',
+        'Service description',
+        'Service type',
+        'Rule',
+        'Unit before (GBP)',
+        'Unit after (GBP)',
+        'Quantity',
+        'Total before (GBP)',
+        'Total after (GBP)',
+        'Total diff (GBP)'
+      ];
+      csvRows.push(headers.join(','));
+
+      completeRows.forEach((row) => {
+        const fields = [
+          row.cli || '',
+          row.desc || '',
+          getServiceLabel(row.serviceId),
+          getServiceRuleLabel(row.serviceId),
+          formatPoundsPlain(row.pricePence),
+          formatPoundsPlain(row.perUnitAfterPence),
+          String(row.qty),
+          formatPoundsPlain(row.totalBeforePence),
+          formatPoundsPlain(row.totalAfterPence),
+          formatPoundsPlain(row.totalDiffPence)
+        ];
+        csvRows.push(fields.map(escapeCsvField).join(','));
+      });
+
+      return csvRows.join('\r\n');
+    }
+
+    function sanitiseFilenamePart(value, fallback) {
+      const cleaned = String(value || '').replace(/[^A-Za-z0-9_-]/g, '');
+      return cleaned || fallback;
+    }
+
+    function buildCsvFilename() {
+      const date = new Date().toISOString().slice(0, 10);
+      const accountPart = sanitiseFilenamePart(importedAccountNumber, 'UnknownAccount');
+      return `April-2026-Price-Increase_${accountPart}_${date}.csv`;
+    }
+
+    function downloadCsv(text, filename) {
+      const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function initialiseSortableRows() {
+      if (!window.Sortable || sortableInstance) return;
+      sortableInstance = new Sortable(rowsEl, {
+        animation: 150,
+        handle: '.drag-handle',
+        draggable: 'tr',
+        direction: 'vertical',
+        onEnd: () => {
+          const totals = recalc();
+          saveRowsToStorage(totals.rows);
+        }
+      });
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      window.clearTimeout(showToast.timeoutId);
+      showToast.timeoutId = window.setTimeout(() => {
+        toastEl.classList.remove('show');
+      }, 1600);
+    }
+
+    function buildCopyTableText(rows) {
+      const lines = ['Number/CLI	Service description	Service type	Rule	Qty	Before	After	Diff'];
+      rows
+        .filter((row) => row.complete)
+        .forEach((row) => {
+          lines.push([
+            row.cli || '—',
+            row.desc || '—',
+            getServiceLabel(row.serviceId),
+            getServiceRuleLabel(row.serviceId),
+            row.qty,
+            formatGBP(row.totalBeforePence),
+            formatGBP(row.totalAfterPence),
+            formatGBP(row.totalDiffPence)
+          ].join('	'));
+        });
       return lines.join('\n');
     }
 
@@ -821,6 +946,18 @@
       await copyText(buildCustomerExplanation(totals));
     });
 
+    downloadCsvBtn.addEventListener('click', () => {
+      const totals = recalc();
+      const completeRows = totals.rows.filter((row) => row.complete);
+      if (!completeRows.length) {
+        showToast('Nothing to export yet.');
+        return;
+      }
+      const csvText = buildCsvFromComputedRows(totals);
+      downloadCsv(csvText, buildCsvFilename());
+      showToast('CSV downloaded');
+    });
+
     rowsEl.addEventListener('input', (event) => {
       if (event.target.classList.contains('price')) {
         const clean = event.target.value.replace(/[^\d.]/g, '');
@@ -865,4 +1002,5 @@
     document.getElementById('versionDisplay').textContent = VERSION;
 
     loadRowsFromStorage();
+    initialiseSortableRows();
     recalc();

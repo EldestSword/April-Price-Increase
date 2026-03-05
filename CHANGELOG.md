@@ -1,3 +1,8 @@
+## [0.0.17] - 2026-03-05
+### Added
+- Drag-and-drop row reordering with a dedicated move handle column (order persists).
+- CSV export of computed services and totals (excludes incomplete rows).
+
 ## [0.0.16] - 2026-03-05
 ### Changed
 - Refactored repo structure: moved CSS into `assets/styles.css` and JavaScript into `assets/app.js`.
