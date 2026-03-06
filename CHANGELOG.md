@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.22] - 2026-03-06
+### Changed
+- Refined PDF export layout with a cleaner header, divider rhythm, summary card styling, improved table spacing, zebra rows, and a boxed disclaimer for clearer readability.
+- Modernised PDF totals, table, and disclaimer presentation using restrained business-friendly colours and stronger alignment for key values.
+
+### Fixed
+- Switched PDF font rendering to standard PDF-lib Helvetica fonts to stop corrupted/missing character output in exported text.
+- Added PDF text sanitisation for smart quotes, apostrophes, dashes, non-breaking spaces, and pasted spreadsheet content before drawing text.
+
+### Removed
+- Kept v0.0.21 simplification in PDF output by excluding service-type breakdown and biggest-driver summary sections.
+
 ## [0.0.21] - 2026-03-06
 ### Removed
 - Breakdown by service type summary panel from the main UI and PDF export.

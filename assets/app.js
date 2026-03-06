@@ -1,4 +1,4 @@
-    const VERSION = '0.0.21';
+    const VERSION = '0.0.22';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
     const THEME_KEY = 'april_2026_theme';
 
@@ -539,66 +539,125 @@
     }
 
 
+    function sanitisePdfText(value) {
+      return String(value ?? '')
+        .replace(/[“”]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/[–—]/g, '-')
+        .replace(/ /g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     async function buildPdfFromTotals(totals) {
-      if (!window.PDFLib || !window.fontkit) {
-        throw new Error('PDF libraries are unavailable.');
+      if (!window.PDFLib) {
+        throw new Error('PDF library is unavailable.');
       }
 
-      const { PDFDocument, rgb } = window.PDFLib;
-      const regularFontBytes = await fetch('assets/fonts/OnAir-Regular.woff2').then((response) => {
-        if (!response.ok) throw new Error('Could not load OnAir Regular font.');
-        return response.arrayBuffer();
-      });
-      const boldFontBytes = await fetch('assets/fonts/OnAir-Bold.woff2').then((response) => {
-        if (!response.ok) throw new Error('Could not load OnAir Bold font.');
-        return response.arrayBuffer();
-      });
-
+      const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
       const pdfDoc = await PDFDocument.create();
-      pdfDoc.registerFontkit(window.fontkit);
-
-      const onAirRegular = await pdfDoc.embedFont(regularFontBytes);
-      const onAirBold = await pdfDoc.embedFont(boldFontBytes);
+      const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
       const pageWidth = 595.28;
       const pageHeight = 841.89;
-      const margin = 36;
+      const margin = 42;
       const contentWidth = pageWidth - (margin * 2);
+      const bottomReserve = 26;
+
+      const palette = {
+        text: rgb(0.15, 0.17, 0.2),
+        muted: rgb(0.42, 0.45, 0.5),
+        border: rgb(0.82, 0.85, 0.9),
+        headerFill: rgb(0.95, 0.97, 0.99),
+        zebra: rgb(0.985, 0.988, 0.995),
+        cardFill: rgb(0.965, 0.975, 0.995),
+        emphasis: rgb(0.13, 0.2, 0.36)
+      };
 
       const titleSize = 18;
-      const headerSize = 12;
-      const bodySize = 10;
+      const metaSize = 9;
+      const sectionTitleSize = 11;
+      const bodySize = 9;
       const smallSize = 8;
-      const lineGap = 4;
-      const sectionGap = 14;
+
+      const tableColumns = [
+        { key: 'cli', title: 'Number/CLI', width: 72, align: 'left' },
+        { key: 'desc', title: 'Description', width: 146, align: 'left' },
+        { key: 'type', title: 'Service type', width: 82, align: 'left' },
+        { key: 'rule', title: 'Rule', width: 46, align: 'left' },
+        { key: 'qty', title: 'Qty', width: 26, align: 'center' },
+        { key: 'before', title: 'Before', width: 46, align: 'right' },
+        { key: 'after', title: 'After', width: 46, align: 'right' },
+        { key: 'diff', title: 'Diff', width: 47, align: 'right' }
+      ];
 
       let page = pdfDoc.addPage([pageWidth, pageHeight]);
       let cursorY = pageHeight - margin;
 
+      const addPage = () => {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        cursorY = pageHeight - margin;
+      };
+
       const ensureSpace = (heightNeeded) => {
-        if ((cursorY - heightNeeded) < margin) {
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          cursorY = pageHeight - margin;
+        if ((cursorY - heightNeeded) < (margin + bottomReserve)) {
+          addPage();
           return true;
         }
         return false;
       };
 
-      const drawText = (text, x, y, options = {}) => {
-        page.drawText(text, {
-          x,
-          y,
-          size: options.size || bodySize,
-          font: options.font || onAirRegular,
-          color: options.color || rgb(0.1, 0.1, 0.1)
+      const drawDivider = (y) => {
+        page.drawLine({
+          start: { x: margin, y },
+          end: { x: margin + contentWidth, y },
+          thickness: 1,
+          color: palette.border
         });
       };
 
-      const splitLinesByWidth = (text, font, size, width) => {
-        const raw = String(text || '').trim();
-        if (!raw) return [''];
+      const drawSectionHeading = (label, y) => {
+        page.drawText(sanitisePdfText(label), {
+          x: margin,
+          y,
+          size: sectionTitleSize,
+          font: boldFont,
+          color: palette.text
+        });
+      };
 
-        const words = raw.split(/\s+/);
+      const drawCard = (x, y, width, height, fill = palette.cardFill) => {
+        page.drawRectangle({
+          x,
+          y,
+          width,
+          height,
+          color: fill,
+          borderColor: palette.border,
+          borderWidth: 1
+        });
+      };
+
+      const splitLongWord = (word, font, size, width) => {
+        const chunks = [];
+        let current = '';
+        for (const char of word) {
+          const trial = `${current}${char}`;
+          if (font.widthOfTextAtSize(trial, size) <= width) {
+            current = trial;
+          } else {
+            if (current) chunks.push(current);
+            current = char;
+          }
+        }
+        if (current) chunks.push(current);
+        return chunks.length ? chunks : [''];
+      };
+
+      const measureWrappedLines = (text, font, size, width, maxLines = Infinity) => {
+        const safe = sanitisePdfText(text) || '—';
+        const words = safe.split(' ');
         const lines = [];
         let current = '';
 
@@ -616,158 +675,215 @@
             return;
           }
 
-          let chunk = '';
-          for (const char of word) {
-            const withChar = `${chunk}${char}`;
-            if (font.widthOfTextAtSize(withChar, size) <= width) {
-              chunk = withChar;
-            } else {
-              if (chunk) lines.push(chunk);
-              chunk = char;
-            }
-          }
-          current = chunk;
+          const chunks = splitLongWord(word, font, size, width);
+          lines.push(...chunks.slice(0, -1));
+          current = chunks[chunks.length - 1];
         });
 
         if (current) lines.push(current);
-        return lines.length ? lines : [''];
-      };
 
-      const drawParagraph = (text, options = {}) => {
-        const size = options.size || bodySize;
-        const font = options.font || onAirRegular;
-        const maxWidth = options.maxWidth || contentWidth;
-        const paragraphLineHeight = size + (options.gap ?? lineGap);
-        const lines = String(text || '').split('\n').flatMap((line) => splitLinesByWidth(line, font, size, maxWidth));
-
-        ensureSpace(lines.length * paragraphLineHeight);
-        lines.forEach((line) => {
-          drawText(line, margin, cursorY - size, { size, font });
-          cursorY -= paragraphLineHeight;
-        });
-      };
-
-      const trimToWidth = (text, font, size, width, maxLines = 1) => {
-        const raw = String(text || '—').trim() || '—';
-        const lines = splitLinesByWidth(raw, font, size, width);
         if (lines.length <= maxLines) return lines;
+
         const clipped = lines.slice(0, maxLines);
-        let last = clipped[maxLines - 1] || '';
-        while (last.length > 1 && font.widthOfTextAtSize(`${last}…`, size) > width) {
-          last = last.slice(0, -1);
+        let lastLine = clipped[maxLines - 1];
+        while (lastLine.length > 1 && bodyFont.widthOfTextAtSize(`${lastLine}…`, size) > width) {
+          lastLine = lastLine.slice(0, -1);
         }
-        clipped[maxLines - 1] = `${last}…`;
+        clipped[maxLines - 1] = `${lastLine}…`;
         return clipped;
       };
 
-      drawText('April 2026 Bill Increase Explainer', margin, cursorY - titleSize, { size: titleSize, font: onAirBold });
-      cursorY -= titleSize + sectionGap;
-
-      const meta = `Customer: ${importedCompanyName || 'Unknown'} | Account: ${importedAccountNumber || 'Unknown'} | Exported: ${new Date().toLocaleString('en-GB')}`;
-      drawParagraph(meta, { size: bodySize, font: onAirRegular });
-      cursorY -= 6;
-
-      ensureSpace(92);
-      page.drawRectangle({
-        x: margin,
-        y: cursorY - 86,
-        width: contentWidth,
-        height: 86,
-        borderWidth: 1,
-        borderColor: rgb(0.85, 0.88, 0.92),
-        color: rgb(0.98, 0.99, 1)
-      });
-      drawText('Totals', margin + 10, cursorY - 18, { size: headerSize, font: onAirBold });
-      const totalLines = [
-        `Total before: ${formatGBP(totals.totalBefore)}`,
-        `Total after: ${formatGBP(totals.totalAfter)}`,
-        `Monthly difference: ${formatGBP(totals.diff)}`,
-        `Annual increase: ${formatGBP(totals.annualDiff)}`
-      ];
-      totalLines.forEach((line, index) => drawText(line, margin + 10, cursorY - 36 - (index * 14), { size: bodySize }));
-      cursorY -= 100;
-
-      cursorY -= 8;
-      drawText('Service lines', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
-      cursorY -= headerSize + 8;
-
-      const tableColumns = [
-        { key: 'cli', title: 'Number/CLI', width: 80 },
-        { key: 'desc', title: 'Description', width: 115 },
-        { key: 'type', title: 'Service type', width: 70 },
-        { key: 'rule', title: 'Rule', width: 45 },
-        { key: 'qty', title: 'Qty', width: 28 },
-        { key: 'before', title: 'Before', width: 52 },
-        { key: 'after', title: 'After', width: 52 },
-        { key: 'diff', title: 'Diff', width: 45 }
-      ];
-
-      const tableRowHeight = 14;
-      const drawTableHeader = () => {
-        ensureSpace(tableRowHeight + 2);
-        let x = margin;
-        tableColumns.forEach((column) => {
-          drawText(column.title, x + 1, cursorY - bodySize, { size: bodySize, font: onAirBold });
-          x += column.width;
+      const drawTextCell = (text, x, y, options = {}) => {
+        const safe = sanitisePdfText(text) || '—';
+        page.drawText(safe, {
+          x,
+          y,
+          size: options.size || bodySize,
+          font: options.font || bodyFont,
+          color: options.color || palette.text
         });
-        cursorY -= tableRowHeight;
       };
 
-      drawTableHeader();
-      const completeRows = (totals.rows || []).filter((row) => row.complete);
-      completeRows.forEach((row) => {
-        const values = {
-          cli: row.cli || '—',
-          desc: row.desc || '—',
-          type: getShortServiceLabel(row.serviceId),
-          rule: getServiceRuleLabel(row.serviceId),
-          qty: String(row.qty),
-          before: formatGBP(row.totalBeforePence),
-          after: formatGBP(row.totalAfterPence),
-          diff: formatGBP(row.totalDiffPence)
-        };
+      const drawRightAlignedText = (text, xRight, y, font = bodyFont, size = bodySize, color = palette.text) => {
+        const safe = sanitisePdfText(text) || '—';
+        const width = font.widthOfTextAtSize(safe, size);
+        page.drawText(safe, {
+          x: xRight - width,
+          y,
+          size,
+          font,
+          color
+        });
+      };
 
-        const cliLines = trimToWidth(values.cli, onAirRegular, bodySize, tableColumns[0].width - 3, 1);
-        const descLines = trimToWidth(values.desc, onAirRegular, bodySize, tableColumns[1].width - 3, 2);
-        const dynamicHeight = Math.max(tableRowHeight, Math.max(cliLines.length, descLines.length) * tableRowHeight);
+      const drawTableHeader = () => {
+        const headerHeight = 18;
+        ensureSpace(headerHeight + 6);
+        const yTop = cursorY;
 
-        if ((cursorY - dynamicHeight) < margin + 30) {
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          cursorY = pageHeight - margin;
+        drawCard(margin, yTop - headerHeight, contentWidth, headerHeight, palette.headerFill);
+
+        let x = margin;
+        tableColumns.forEach((column) => {
+          const cellY = yTop - 12;
+          if (column.align === 'right') {
+            drawRightAlignedText(column.title, x + column.width - 5, cellY, boldFont, bodySize, palette.text);
+          } else if (column.align === 'center') {
+            const safe = sanitisePdfText(column.title);
+            const textWidth = boldFont.widthOfTextAtSize(safe, bodySize);
+            drawTextCell(safe, x + ((column.width - textWidth) / 2), cellY, { font: boldFont });
+          } else {
+            drawTextCell(column.title, x + 4, cellY, { font: boldFont });
+          }
+
+          page.drawLine({
+            start: { x: x + column.width, y: yTop - headerHeight },
+            end: { x: x + column.width, y: yTop },
+            thickness: 0.6,
+            color: palette.border
+          });
+          x += column.width;
+        });
+
+        cursorY -= headerHeight;
+      };
+
+      const drawTableRow = (rowData, index) => {
+        const descriptionLines = measureWrappedLines(rowData.desc, bodyFont, bodySize, tableColumns[1].width - 8, 2);
+        const rowHeight = Math.max(22, (descriptionLines.length * 11) + 8);
+
+        if ((cursorY - rowHeight) < (margin + 120)) {
+          addPage();
+          drawSectionHeading('Service lines', cursorY - sectionTitleSize);
+          cursorY -= sectionTitleSize + 8;
           drawTableHeader();
         }
 
-        const lineValues = [
-          cliLines,
-          descLines,
-          trimToWidth(values.type, onAirRegular, bodySize, tableColumns[2].width - 3, 1),
-          trimToWidth(values.rule, onAirRegular, bodySize, tableColumns[3].width - 3, 1),
-          trimToWidth(values.qty, onAirRegular, bodySize, tableColumns[4].width - 3, 1),
-          trimToWidth(values.before, onAirRegular, bodySize, tableColumns[5].width - 3, 1),
-          trimToWidth(values.after, onAirRegular, bodySize, tableColumns[6].width - 3, 1),
-          trimToWidth(values.diff, onAirRegular, bodySize, tableColumns[7].width - 3, 1)
-        ];
+        const yTop = cursorY;
+        if (index % 2 === 1) {
+          page.drawRectangle({
+            x: margin,
+            y: yTop - rowHeight,
+            width: contentWidth,
+            height: rowHeight,
+            color: palette.zebra
+          });
+        }
+
+        page.drawLine({
+          start: { x: margin, y: yTop - rowHeight },
+          end: { x: margin + contentWidth, y: yTop - rowHeight },
+          thickness: 0.6,
+          color: palette.border
+        });
 
         let x = margin;
-        lineValues.forEach((lines, columnIndex) => {
-          lines.forEach((line, lineIndex) => {
-            drawText(line, x + 1, cursorY - bodySize - (lineIndex * tableRowHeight), { size: bodySize });
+        tableColumns.forEach((column) => {
+          const value = rowData[column.key] || '—';
+          const textY = yTop - 14;
+          if (column.key === 'desc') {
+            descriptionLines.forEach((line, lineIndex) => {
+              drawTextCell(line, x + 4, textY - (lineIndex * 11));
+            });
+          } else if (column.align === 'right') {
+            drawRightAlignedText(value, x + column.width - 4, textY);
+          } else if (column.align === 'center') {
+            const safe = sanitisePdfText(value) || '—';
+            const textWidth = bodyFont.widthOfTextAtSize(safe, bodySize);
+            drawTextCell(safe, x + ((column.width - textWidth) / 2), textY);
+          } else {
+            const lines = measureWrappedLines(value, bodyFont, bodySize, column.width - 8, 1);
+            drawTextCell(lines[0], x + 4, textY);
+          }
+
+          page.drawLine({
+            start: { x: x + column.width, y: yTop - rowHeight },
+            end: { x: x + column.width, y: yTop },
+            thickness: 0.3,
+            color: palette.border
           });
-          x += tableColumns[columnIndex].width;
+          x += column.width;
         });
-        cursorY -= dynamicHeight;
+
+        cursorY -= rowHeight;
+      };
+
+      drawTextCell('April 2026 Bill Increase Explainer', margin, cursorY - titleSize, {
+        size: titleSize,
+        font: boldFont
+      });
+      cursorY -= titleSize + 6;
+
+      const metadata = `Customer: ${sanitisePdfText(importedCompanyName || 'Unknown')} | Account: ${sanitisePdfText(importedAccountNumber || 'Unknown')} | Exported: ${sanitisePdfText(new Date().toLocaleString('en-GB'))}`;
+      drawTextCell(metadata, margin, cursorY - metaSize, { size: metaSize, color: palette.muted });
+      cursorY -= metaSize + 10;
+      drawDivider(cursorY);
+      cursorY -= 14;
+
+      const summaryCardHeight = 88;
+      ensureSpace(summaryCardHeight + 16);
+      drawCard(margin, cursorY - summaryCardHeight, contentWidth, summaryCardHeight);
+      drawSectionHeading('Totals summary', cursorY - 14);
+
+      const summaryValues = [
+        { label: 'Total before', value: formatGBP(totals.totalBefore), highlight: false },
+        { label: 'Total after', value: formatGBP(totals.totalAfter), highlight: false },
+        { label: 'Monthly difference', value: formatGBP(totals.diff), highlight: true },
+        { label: 'Annual increase', value: formatGBP(totals.annualDiff), highlight: false }
+      ];
+      const itemTop = cursorY - 34;
+      const itemWidth = contentWidth / 4;
+      summaryValues.forEach((item, index) => {
+        const blockX = margin + (index * itemWidth);
+        drawTextCell(item.label, blockX + 8, itemTop, { size: smallSize, color: palette.muted });
+        drawTextCell(item.value, blockX + 8, itemTop - 16, {
+          size: item.highlight ? 12 : 11,
+          font: boldFont,
+          color: item.highlight ? palette.emphasis : palette.text
+        });
+      });
+      cursorY -= summaryCardHeight + 18;
+
+      drawSectionHeading('Service lines', cursorY - sectionTitleSize);
+      cursorY -= sectionTitleSize + 8;
+      drawTableHeader();
+
+      const completeRows = (totals.rows || []).filter((row) => row.complete);
+      completeRows.forEach((row, index) => {
+        drawTableRow({
+          cli: sanitisePdfText(row.cli || '—'),
+          desc: sanitisePdfText(row.desc || '—'),
+          type: sanitisePdfText(getShortServiceLabel(row.serviceId)),
+          rule: sanitisePdfText(getServiceRuleLabel(row.serviceId)),
+          qty: sanitisePdfText(String(row.qty)),
+          before: sanitisePdfText(formatGBP(row.totalBeforePence)),
+          after: sanitisePdfText(formatGBP(row.totalAfterPence)),
+          diff: sanitisePdfText(formatGBP(row.totalDiffPence))
+        }, index);
       });
 
       const disclaimerLines = [
-        'This is an estimate and only applies where the April 2026 increase is not already specified in the customer’s contract terms.',
-        'Before advising a customer, verify which price increase letter they received in Daisy Central (under “Important information about your Daisy Service”). Some customers/services may be excluded.'
+        "This is an estimate and only applies where the April 2026 increase is not already specified in the customer's contract terms.",
+        'Before advising a customer, verify which price increase letter they received in Daisy Central (under "Important information about your Daisy Service"). Some customers/services may be excluded.'
       ];
+      const disclaimerHeadingHeight = 12;
+      const disclaimerContent = disclaimerLines
+        .map((line) => measureWrappedLines(line, bodyFont, smallSize, contentWidth - 16, 3))
+        .flat();
+      const disclaimerHeight = 18 + disclaimerHeadingHeight + (disclaimerContent.length * 10);
 
-      ensureSpace(40);
-      cursorY -= 6;
-      drawText('Disclaimer', margin, cursorY - smallSize, { size: smallSize, font: onAirBold });
-      cursorY -= 12;
-      disclaimerLines.forEach((line) => drawParagraph(line, { size: smallSize, maxWidth: contentWidth, gap: 2 }));
+      if ((cursorY - disclaimerHeight) < (margin + bottomReserve)) {
+        addPage();
+      }
+
+      const disclaimerTop = cursorY - 10;
+      drawCard(margin, disclaimerTop - disclaimerHeight, contentWidth, disclaimerHeight, rgb(0.99, 0.99, 0.995));
+      drawTextCell('Disclaimer', margin + 8, disclaimerTop - 12, { size: smallSize, font: boldFont, color: palette.muted });
+      let disclaimerY = disclaimerTop - 24;
+      disclaimerContent.forEach((line) => {
+        drawTextCell(line, margin + 8, disclaimerY, { size: smallSize, color: palette.muted });
+        disclaimerY -= 10;
+      });
 
       return pdfDoc.save();
     }
