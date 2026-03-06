@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.21] - 2026-03-06
+### Removed
+- Breakdown by service type summary panel from the main UI and PDF export.
+- Biggest drivers of increase summary panel from the main UI and PDF export.
+
+### Fixed
+- Fraud Guardian descriptions now auto-detect as Broadband / Voice / Mobile / Other, preventing accidental WLR classification when "single line" appears in the description.
+
 All notable changes to this project will be documented in this file.
 
 This project loosely follows **Keep a Changelog** and **SemVer** (pre‑1.0).

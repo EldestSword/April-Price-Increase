@@ -1,4 +1,4 @@
-    const VERSION = '0.0.20';
+    const VERSION = '0.0.21';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
     const THEME_KEY = 'april_2026_theme';
 
@@ -25,8 +25,6 @@
     const fileInput = document.getElementById('lsrFileInput');
     const tableWrapEl = document.querySelector('.table-wrap');
     const rowWarningsEl = document.getElementById('rowWarnings');
-    const breakdownPanelEl = document.getElementById('breakdownPanel');
-    const driversPanelEl = document.getElementById('driversPanel');
     const downloadCsvBtn = document.getElementById('btnDownloadCsv');
     const downloadPdfBtn = document.getElementById('btnDownloadPdf');
     const themeToggleBtn = document.getElementById('themeToggle');
@@ -125,15 +123,12 @@
       return '—';
     }
 
+
     function getShortServiceLabel(serviceId) {
       const label = getServiceLabel(serviceId);
       return label.split(' – ')[0].split(' (')[0];
     }
 
-    function truncateText(text, max = 60) {
-      if (text.length <= max) return text;
-      return `${text.slice(0, max - 1)}…`;
-    }
 
     function renderRowWarnings(missingTypeCount) {
       if (missingTypeCount > 0) {
@@ -145,71 +140,6 @@
       rowWarningsEl.textContent = '';
     }
 
-    function renderBreakdownByServiceType(totals) {
-      const entries = Object.values(totals.breakdownByType || {}).sort((a, b) => b.diffPence - a.diffPence);
-      if (!entries.length) {
-        breakdownPanelEl.innerHTML = '';
-        return;
-      }
-
-      const rows = entries.map((entry) => `
-        <tr>
-          <td>${getShortServiceLabel(entry.serviceId)} (${entry.count})</td>
-          <td>${formatGBP(entry.beforePence)}</td>
-          <td>${formatGBP(entry.afterPence)}</td>
-          <td>${formatGBP(entry.diffPence)}</td>
-        </tr>`).join('');
-
-      breakdownPanelEl.innerHTML = `
-        <strong style="display:block;margin-bottom:0.4rem;">Breakdown by service type</strong>
-        <table class="mini-table">
-          <thead>
-            <tr>
-              <th>Service type</th>
-              <th>Before</th>
-              <th>After</th>
-              <th>Diff</th>
-            </tr>
-          </thead>
-          <tbody>${rows}
-          </tbody>
-        </table>`;
-    }
-
-    function renderIncreaseDrivers(totals) {
-      const completeRows = totals.rows.filter((row) => row.complete);
-      if (!completeRows.length) {
-        driversPanelEl.innerHTML = '';
-        return;
-      }
-
-      const topTypes = Object.values(totals.breakdownByType || {})
-        .sort((a, b) => b.diffPence - a.diffPence)
-        .slice(0, 3);
-
-      const topRows = completeRows
-        .slice()
-        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
-        .slice(0, 3);
-
-      const typeItems = topTypes.length
-        ? topTypes.map((item) => `<li>${getShortServiceLabel(item.serviceId)}: ${formatGBP(item.diffPence)}</li>`).join('')
-        : '<li>None</li>';
-
-      const rowItems = topRows.length
-        ? topRows.map((row) => {
-          const reference = truncateText(row.desc || row.cli || 'Service');
-          return `<li>${reference} | ${getShortServiceLabel(row.serviceId)}: ${formatGBP(row.totalDiffPence)}</li>`;
-        }).join('')
-        : '<li>None</li>';
-
-      driversPanelEl.innerHTML = `
-        <strong style="display:block;margin-bottom:0.4rem;">Biggest drivers of increase</strong>
-        <div class="mini-label">By service type</div>
-        <ul style="margin:0.2rem 0 0.5rem 1.1rem;padding:0;">${typeItems}</ul>
-        <div class="mini-label">By service line</div>
-        <ul style="margin:0.2rem 0 0 1.1rem;padding:0;">${rowItems}</ul>`;
-    }
 
     function addRow(data = {}) {
       const tr = document.createElement('tr');
@@ -366,7 +296,6 @@
       let totalAfter = 0;
       const cliValues = [];
       let missingTypeCount = 0;
-      const breakdownByType = {};
 
       rows.forEach((row) => {
         if (row.cli) cliValues.push(row.cli);
@@ -376,21 +305,6 @@
         totalBefore += row.totalBeforePence;
         totalAfter += row.totalAfterPence;
 
-        if (!breakdownByType[row.serviceId]) {
-          breakdownByType[row.serviceId] = {
-            serviceId: row.serviceId,
-            beforePence: 0,
-            afterPence: 0,
-            diffPence: 0,
-            count: 0
-          };
-        }
-
-        const bucket = breakdownByType[row.serviceId];
-        bucket.beforePence += row.totalBeforePence;
-        bucket.afterPence += row.totalAfterPence;
-        bucket.diffPence += row.totalDiffPence;
-        bucket.count += 1;
       });
 
       const diff = totalAfter - totalBefore;
@@ -421,9 +335,7 @@
       else totalDiffBoxEl.classList.add('diff-zero');
 
       renderRowWarnings(missingTypeCount);
-      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, breakdownByType, missingTypeCount };
-      renderBreakdownByServiceType(totals);
-      renderIncreaseDrivers(totals);
+      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, missingTypeCount };
 
       analytics.totalIncrease += diff;
       localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
@@ -626,19 +538,6 @@
       URL.revokeObjectURL(url);
     }
 
-    function topDriversByServiceType(totals) {
-      return Object.values(totals.breakdownByType || {})
-        .sort((a, b) => b.diffPence - a.diffPence)
-        .slice(0, 3);
-    }
-
-    function topDriversByServiceLine(totals) {
-      return (totals.rows || [])
-        .filter((row) => row.complete)
-        .slice()
-        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
-        .slice(0, 3);
-    }
 
     async function buildPdfFromTotals(totals) {
       if (!window.PDFLib || !window.fontkit) {
@@ -787,41 +686,6 @@
       ];
       totalLines.forEach((line, index) => drawText(line, margin + 10, cursorY - 36 - (index * 14), { size: bodySize }));
       cursorY -= 100;
-
-      drawText('Breakdown by service type', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
-      cursorY -= headerSize + 8;
-      const typeRows = Object.values(totals.breakdownByType || {}).sort((a, b) => b.diffPence - a.diffPence);
-      if (!typeRows.length) {
-        drawParagraph('No complete service rows.', { size: bodySize });
-      } else {
-        typeRows.forEach((entry) => {
-          ensureSpace(14);
-          const line = `${getShortServiceLabel(entry.serviceId)} | Count ${entry.count} | Before ${formatGBP(entry.beforePence)} | After ${formatGBP(entry.afterPence)} | Diff ${formatGBP(entry.diffPence)}`;
-          drawText(line, margin, cursorY - bodySize, { size: bodySize });
-          cursorY -= 14;
-        });
-      }
-      cursorY -= 8;
-
-      drawText('Biggest drivers of increase', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
-      cursorY -= headerSize + 8;
-
-      drawText('By service type:', margin, cursorY - bodySize, { size: bodySize, font: onAirBold });
-      cursorY -= 14;
-      topDriversByServiceType(totals).forEach((entry) => {
-        ensureSpace(14);
-        drawText(`• ${getShortServiceLabel(entry.serviceId)}: ${formatGBP(entry.diffPence)}`, margin + 8, cursorY - bodySize, { size: bodySize });
-        cursorY -= 14;
-      });
-
-      drawText('By service line:', margin, cursorY - bodySize, { size: bodySize, font: onAirBold });
-      cursorY -= 14;
-      topDriversByServiceLine(totals).forEach((row) => {
-        ensureSpace(14);
-        const ref = row.desc || row.cli || 'Service';
-        drawText(`• ${truncateText(ref, 80)}: ${formatGBP(row.totalDiffPence)}`, margin + 8, cursorY - bodySize, { size: bodySize });
-        cursorY -= 14;
-      });
 
       cursorY -= 8;
       drawText('Service lines', margin, cursorY - headerSize, { size: headerSize, font: onAirBold });
@@ -1065,6 +929,8 @@
       const text = (desc || '').toLowerCase();
 
       if (cli && cli.startsWith('M0')) return 'maintenance';
+
+      if (text.includes('fraud guardian')) return 'other';
 
       if (text.includes('wlr') || text.includes('pstn') || text.includes('single line'))
         return 'wlr';
