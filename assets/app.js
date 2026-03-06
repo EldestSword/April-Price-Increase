@@ -1,4 +1,4 @@
-    const VERSION = '0.0.23';
+    const VERSION = '0.0.24';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
     const THEME_KEY = 'april_2026_theme';
 
@@ -166,10 +166,12 @@
     function isSelectServiceDescription(desc) {
       const keywords = ['fraud guardian', 'complete care', 'business assurance', 'safeweb', 'free2call', 'f2c'];
       if (keywords.some((keyword) => desc.includes(keyword))) return true;
+
       const careRegexes = [
-        /(?:enhanced|premium|standard|advanced|plus)?\s*care/,
-        /care\s*(?:level|support|package|plan|service)/
+        /\b(?:enhanced|premium|standard|advanced|complete)?\s*care\b/,
+        /\bcare\s*(?:level|support|package|plan|service)?\b/
       ];
+
       return careRegexes.some((regex) => regex.test(desc));
     }
 
@@ -183,11 +185,28 @@
     }
 
     function isBroadbandService(desc, pin) {
-      return normaliseIdentifier(pin).startsWith('BBEU') || desc.includes('sogea') || desc.includes('fibre');
+      const broadbandTerms = ['sogea', 'fibre', 'fttc', 'fttp', 'broadband', 'superfast', 'gea'];
+
+      return normaliseIdentifier(pin).startsWith('BBEU')
+        || broadbandTerms.some((term) => desc.includes(term));
     }
 
     function isVoiceService(desc) {
-      return desc.includes('dhv') || desc.includes('hvs');
+      const voiceTerms = [
+        'dhv',
+        'hvs',
+        'hosted voice',
+        'hosted',
+        'voice',
+        'polycom',
+        'yealink',
+        'handset',
+        'number port',
+        'sip',
+        'poe switch'
+      ];
+
+      return voiceTerms.some((term) => desc.includes(term));
     }
 
     function isWlrService(desc) {
@@ -442,7 +461,7 @@
         .join('');
 
       categorySummaryEl.innerHTML = `
-        <table class="mini-table">
+        <table class="mini-table category-summary-table">
           <thead>
             <tr>
               <th>Category</th>

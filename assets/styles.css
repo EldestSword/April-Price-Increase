@@ -304,6 +304,7 @@ thead th {
 .mini-table {
   width: 100%;
   min-width: 0;
+  table-layout: fixed;
   font-size: 0.84rem;
   border-collapse: collapse;
 }
@@ -318,6 +319,32 @@ thead th {
   position: static;
   background: var(--mini-head-bg);
   color: var(--text);
+}
+
+.category-summary-table th,
+.category-summary-table td {
+  overflow-wrap: anywhere;
+}
+
+.category-summary-table th:nth-child(1),
+.category-summary-table td:nth-child(1) {
+  width: 33%;
+}
+
+.category-summary-table th:nth-child(2),
+.category-summary-table td:nth-child(2) {
+  width: 10%;
+  text-align: center;
+}
+
+.category-summary-table th:nth-child(3),
+.category-summary-table td:nth-child(3),
+.category-summary-table th:nth-child(4),
+.category-summary-table td:nth-child(4),
+.category-summary-table th:nth-child(5),
+.category-summary-table td:nth-child(5) {
+  width: 19%;
+  text-align: right;
 }
 
 .mini-label {
@@ -348,39 +375,39 @@ tbody tr:last-child td {
   text-align: center;
 }
 
-th:nth-child(2),
-td:nth-child(2) {
+.table-wrap th:nth-child(2),
+.table-wrap td:nth-child(2) {
   min-width: 160px;
 }
 
-th:nth-child(3),
-td:nth-child(3) {
+.table-wrap th:nth-child(3),
+.table-wrap td:nth-child(3) {
   min-width: 320px;
 }
 
-th:nth-child(4),
-td:nth-child(4) {
+.table-wrap th:nth-child(4),
+.table-wrap td:nth-child(4) {
   min-width: 220px;
 }
 
-th:nth-child(5),
-td:nth-child(5) {
+.table-wrap th:nth-child(5),
+.table-wrap td:nth-child(5) {
   min-width: 120px;
 }
 
-th:nth-child(6),
-td:nth-child(6) {
+.table-wrap th:nth-child(6),
+.table-wrap td:nth-child(6) {
   min-width: 140px;
 }
 
-th:nth-child(7),
-td:nth-child(7) {
+.table-wrap th:nth-child(7),
+.table-wrap td:nth-child(7) {
   min-width: 70px;
   text-align: center;
 }
 
-th:nth-child(11),
-td:nth-child(11) {
+.table-wrap th:nth-child(11),
+.table-wrap td:nth-child(11) {
   min-width: 126px;
 }
 
@@ -579,11 +606,12 @@ button:hover {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 0.7rem;
 }
 
 .summary-card {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: color-mix(in oklab, var(--surface) 90%, transparent);
@@ -607,6 +635,11 @@ button:hover {
   display: grid;
   gap: 0.34rem;
   font-size: 0.83rem;
+  overflow-wrap: anywhere;
+}
+
+.summary-card > * {
+  min-width: 0;
 }
 
 .summary-list li {
@@ -662,6 +695,12 @@ footer div {
 .toast.show {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+@media (max-width: 1140px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1080px) {
