@@ -1,4 +1,4 @@
-    const VERSION = '0.0.22';
+    const VERSION = '0.0.23';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
     const THEME_KEY = 'april_2026_theme';
 
@@ -14,6 +14,17 @@
       { id: 'microsoft', label: 'Microsoft Products (Excluded – no increase)', kind: 'none' }
     ];
 
+    const PRODUCT_CATEGORY_LABELS = {
+      wlr: 'WLR Line',
+      broadband: 'Broadband',
+      voice: 'Voice',
+      mobile: 'Mobile',
+      ethernet: 'Leased Line / Ethernet',
+      select_services: 'Select Services',
+      maintenance: 'Maintenance',
+      other: 'Other'
+    };
+
     const rowsEl = document.getElementById('serviceRows');
     const totalBeforeEl = document.getElementById('totalBefore');
     const totalAfterEl = document.getElementById('totalAfter');
@@ -28,6 +39,8 @@
     const downloadCsvBtn = document.getElementById('btnDownloadCsv');
     const downloadPdfBtn = document.getElementById('btnDownloadPdf');
     const themeToggleBtn = document.getElementById('themeToggle');
+    const categorySummaryEl = document.getElementById('categorySummary');
+    const driversSummaryEl = document.getElementById('driversSummary');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -127,6 +140,73 @@
     function getShortServiceLabel(serviceId) {
       const label = getServiceLabel(serviceId);
       return label.split(' – ')[0].split(' (')[0];
+    }
+
+
+    function getProductCategoryLabel(category) {
+      return PRODUCT_CATEGORY_LABELS[category] || PRODUCT_CATEGORY_LABELS.other;
+    }
+
+    function normaliseServiceDescription(value) {
+      return String(value || '').toLowerCase().trim();
+    }
+
+    function normaliseDigits(value) {
+      return String(value || '').replace(/\D/g, '');
+    }
+
+    function normaliseIdentifier(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function isMaintenancePin(pin) {
+      return /^M0/i.test(normaliseIdentifier(pin));
+    }
+
+    function isSelectServiceDescription(desc) {
+      const keywords = ['fraud guardian', 'complete care', 'business assurance', 'safeweb', 'free2call', 'f2c'];
+      if (keywords.some((keyword) => desc.includes(keyword))) return true;
+      const careRegexes = [
+        /(?:enhanced|premium|standard|advanced|plus)?\s*care/,
+        /care\s*(?:level|support|package|plan|service)/
+      ];
+      return careRegexes.some((regex) => regex.test(desc));
+    }
+
+    function isMobileCli(value) {
+      const digits = normaliseDigits(value);
+      return /^07\d{9}$/.test(digits) || /^7\d{9}$/.test(digits);
+    }
+
+    function isEthernetPin(pin) {
+      return normaliseIdentifier(pin).startsWith('DR-');
+    }
+
+    function isBroadbandService(desc, pin) {
+      return normaliseIdentifier(pin).startsWith('BBEU') || desc.includes('sogea') || desc.includes('fibre');
+    }
+
+    function isVoiceService(desc) {
+      return desc.includes('dhv') || desc.includes('hvs');
+    }
+
+    function isWlrService(desc) {
+      return desc.includes('wlr') || desc.includes('pstn') || desc.includes('single line');
+    }
+
+    function detectProductCategory(row) {
+      const desc = normaliseServiceDescription(row.desc);
+      const cli = String(row.cli || '').trim();
+      const pin = normaliseIdentifier(row.pin || row.cli || '');
+
+      if (row.serviceId === 'maintenance' || isMaintenancePin(pin)) return 'maintenance';
+      if (isSelectServiceDescription(desc)) return 'select_services';
+      if (isMobileCli(cli)) return 'mobile';
+      if (isEthernetPin(pin)) return 'ethernet';
+      if (isBroadbandService(desc, pin)) return 'broadband';
+      if (isVoiceService(desc)) return 'voice';
+      if (isWlrService(desc)) return 'wlr';
+      return 'other';
     }
 
 
@@ -233,8 +313,10 @@
           setComputedRow(row, { complete: false });
           return {
             cli,
+            pin: cli,
             desc,
             serviceId,
+            productCategory: detectProductCategory({ cli, pin: cli, desc, serviceId }),
             qty,
             priceText: priceInput.value,
             pricePence: perUnitBeforePence,
@@ -262,8 +344,10 @@
 
         return {
           cli,
+          pin: cli,
           desc,
           serviceId,
+          productCategory: detectProductCategory({ cli, pin: cli, desc, serviceId }),
           qty,
           priceText: priceInput.value,
           pricePence: perUnitBeforePence,
@@ -289,6 +373,104 @@
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(safeRows));
     }
+
+    function buildProductCategorySummary(rows) {
+      const completeRows = rows.filter((row) => row.complete);
+      const grouped = new Map();
+
+      completeRows.forEach((row) => {
+        const category = row.productCategory || 'other';
+        if (!grouped.has(category)) {
+          grouped.set(category, {
+            category,
+            count: 0,
+            totalBeforePence: 0,
+            totalAfterPence: 0,
+            totalDiffPence: 0
+          });
+        }
+        const bucket = grouped.get(category);
+        bucket.count += 1;
+        bucket.totalBeforePence += row.totalBeforePence;
+        bucket.totalAfterPence += row.totalAfterPence;
+        bucket.totalDiffPence += row.totalDiffPence;
+      });
+
+      return Array.from(grouped.values()).sort((a, b) => b.totalDiffPence - a.totalDiffPence);
+    }
+
+    function buildBiggestDrivers(rows, categorySummary) {
+      const topCategories = categorySummary
+        .filter((item) => item.totalDiffPence > 0)
+        .slice(0, 5)
+        .map((item) => ({
+          label: getProductCategoryLabel(item.category),
+          diffPence: item.totalDiffPence
+        }));
+
+      const topRows = rows
+        .filter((row) => row.complete)
+        .sort((a, b) => b.totalDiffPence - a.totalDiffPence)
+        .slice(0, 5)
+        .map((row) => ({
+          label: row.desc || row.cli || 'Service line',
+          diffPence: row.totalDiffPence
+        }));
+
+      return { topCategories, topRows };
+    }
+
+    function renderSummarySections(categorySummary, drivers) {
+      if (!categorySummaryEl || !driversSummaryEl) return;
+
+      if (!categorySummary.length) {
+        categorySummaryEl.innerHTML = '<p class="summary-empty">Add complete rows to view summary data.</p>';
+        driversSummaryEl.innerHTML = '<p class="summary-empty">Biggest drivers will appear once rows are calculated.</p>';
+        return;
+      }
+
+      const summaryRows = categorySummary
+        .map((item) => `
+          <tr>
+            <td>${getProductCategoryLabel(item.category)}</td>
+            <td>${item.count}</td>
+            <td>${formatGBP(item.totalBeforePence)}</td>
+            <td>${formatGBP(item.totalAfterPence)}</td>
+            <td>${formatGBP(item.totalDiffPence)}</td>
+          </tr>
+        `)
+        .join('');
+
+      categorySummaryEl.innerHTML = `
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Count</th>
+              <th>Before</th>
+              <th>After</th>
+              <th>Diff</th>
+            </tr>
+          </thead>
+          <tbody>${summaryRows}</tbody>
+        </table>
+      `;
+
+      const categoryList = drivers.topCategories.length
+        ? drivers.topCategories.map((item) => `<li>${item.label}: ${formatGBP(item.diffPence)}</li>`).join('')
+        : '<li>No positive increases yet.</li>';
+      const lineList = drivers.topRows.length
+        ? drivers.topRows.map((item) => `<li>${item.label}: ${formatGBP(item.diffPence)}</li>`).join('')
+        : '<li>No lines available.</li>';
+
+      driversSummaryEl.innerHTML = `
+        <p class="mini-label"><strong>By product category</strong></p>
+        <ul class="summary-list">${categoryList}</ul>
+        <p class="mini-label"><strong>By service line</strong></p>
+        <ul class="summary-list">${lineList}</ul>
+      `;
+    }
+
 
     function recalc() {
       const rows = readRows();
@@ -334,8 +516,12 @@
       else if (diff < 0) totalDiffBoxEl.classList.add('diff-negative');
       else totalDiffBoxEl.classList.add('diff-zero');
 
+      const categorySummary = buildProductCategorySummary(rows);
+      const biggestDrivers = buildBiggestDrivers(rows, categorySummary);
+
       renderRowWarnings(missingTypeCount);
-      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, missingTypeCount };
+      renderSummarySections(categorySummary, biggestDrivers);
+      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, missingTypeCount, categorySummary, biggestDrivers };
 
       analytics.totalIncrease += diff;
       localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
@@ -844,6 +1030,63 @@
       });
       cursorY -= summaryCardHeight + 18;
 
+      const categorySummary = totals.categorySummary || [];
+      if (categorySummary.length) {
+        const rowHeight = 16;
+        const headingGap = 10;
+        const tableHeight = 22 + (categorySummary.length * rowHeight);
+        ensureSpace(tableHeight + 14);
+        drawSectionHeading('Summary by product category', cursorY - sectionTitleSize);
+        cursorY -= sectionTitleSize + headingGap;
+
+        drawCard(margin, cursorY - tableHeight, contentWidth, tableHeight, rgb(0.98, 0.985, 0.995));
+        const headerY = cursorY - 14;
+        drawTextCell('Category', margin + 8, headerY, { size: smallSize, font: boldFont, color: palette.muted });
+        drawTextCell('Count', margin + 180, headerY, { size: smallSize, font: boldFont, color: palette.muted });
+        drawTextCell('Before', margin + 240, headerY, { size: smallSize, font: boldFont, color: palette.muted });
+        drawTextCell('After', margin + 330, headerY, { size: smallSize, font: boldFont, color: palette.muted });
+        drawTextCell('Diff', margin + 430, headerY, { size: smallSize, font: boldFont, color: palette.muted });
+
+        let rowY = cursorY - 30;
+        categorySummary.forEach((item) => {
+          drawTextCell(getProductCategoryLabel(item.category), margin + 8, rowY, { size: smallSize });
+          drawTextCell(String(item.count), margin + 180, rowY, { size: smallSize });
+          drawTextCell(formatGBP(item.totalBeforePence), margin + 240, rowY, { size: smallSize });
+          drawTextCell(formatGBP(item.totalAfterPence), margin + 330, rowY, { size: smallSize });
+          drawTextCell(formatGBP(item.totalDiffPence), margin + 430, rowY, { size: smallSize, font: boldFont });
+          rowY -= rowHeight;
+        });
+
+        cursorY -= tableHeight + 16;
+      }
+
+      const driverGroups = totals.biggestDrivers || { topCategories: [], topRows: [] };
+      const driverLineCount = 2 + Math.max(driverGroups.topCategories.length, 1) + 2 + Math.max(driverGroups.topRows.length, 1);
+      const driversHeight = 24 + (driverLineCount * 10);
+      ensureSpace(driversHeight + 12);
+      drawSectionHeading('Biggest drivers of increase', cursorY - sectionTitleSize);
+      cursorY -= sectionTitleSize + 8;
+      drawCard(margin, cursorY - driversHeight, contentWidth, driversHeight, rgb(0.98, 0.985, 0.995));
+      let driverY = cursorY - 14;
+      drawTextCell('By product category', margin + 8, driverY, { size: smallSize, font: boldFont });
+      driverY -= 11;
+      (driverGroups.topCategories.length ? driverGroups.topCategories : [{ label: 'No positive increases yet.', diffPence: null }]).forEach((item) => {
+        const text = item.diffPence === null ? `• ${item.label}` : `• ${item.label}: ${formatGBP(item.diffPence)}`;
+        drawTextCell(text, margin + 12, driverY, { size: smallSize });
+        driverY -= 10;
+      });
+
+      driverY -= 3;
+      drawTextCell('By service line', margin + 8, driverY, { size: smallSize, font: boldFont });
+      driverY -= 11;
+      (driverGroups.topRows.length ? driverGroups.topRows : [{ label: 'No lines available.', diffPence: null }]).forEach((item) => {
+        const text = item.diffPence === null ? `• ${item.label}` : `• ${sanitisePdfText(item.label)}: ${formatGBP(item.diffPence)}`;
+        drawTextCell(text, margin + 12, driverY, { size: smallSize });
+        driverY -= 10;
+      });
+
+      cursorY -= driversHeight + 16;
+
       drawSectionHeading('Service lines', cursorY - sectionTitleSize);
       cursorY -= sectionTitleSize + 8;
       drawTableHeader();
@@ -1042,9 +1285,9 @@
 
     function detectServiceType(desc, cli) {
 
-      const text = (desc || '').toLowerCase();
+      const text = normaliseServiceDescription(desc);
 
-      if (cli && cli.startsWith('M0')) return 'maintenance';
+      if (isMaintenancePin(cli)) return 'maintenance';
 
       if (text.includes('fraud guardian')) return 'other';
 
