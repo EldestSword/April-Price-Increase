@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.24] - 2026-03-06
+### Added
+- None.
+
+### Changed
+- Tightened product-category detection so Hosted Voice, handset endpoints, and FTTC-style broadband descriptions classify into stronger reporting buckets.
+- Improved summary card table layout with fixed column sizing and better wrapping so category summaries stay inside their card.
+
+### Fixed
+- Reduced overuse of `Other` in LSR summary grouping by broadening Voice/Broadband keyword detection and cleaning up select-services care matching regexes.
+
+### Removed
+- None.
+
 ## [0.0.23] - 2026-03-06
 ### Added
 - Added a dedicated `productCategory` classification layer for reporting across UI summaries, biggest-driver insights, and PDF output.
