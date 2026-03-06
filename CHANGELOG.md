@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.23] - 2026-03-06
+### Added
+- Added a dedicated `productCategory` classification layer for reporting across UI summaries, biggest-driver insights, and PDF output.
+- Added a new `Select Services` reporting category for care/fraud/safeweb style products.
+
+### Changed
+- Reintroduced summary reporting using product categories with priority-based matching to avoid weak keyword miscategorisation.
+- Kept increase-rule pricing classification separate from reporting categories so calculations remain unchanged.
+
+### Fixed
+- Applied strict classifier priority ordering so stronger identifiers (e.g. maintenance/select-services/mobile/asset pins) win before broad text matches.
+
 ## [0.0.22] - 2026-03-06
 ### Changed
 - Refined PDF export layout with a cleaner header, divider rhythm, summary card styling, improved table spacing, zebra rows, and a boxed disclaimer for clearer readability.
