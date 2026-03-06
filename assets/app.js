@@ -1,6 +1,7 @@
-    const VERSION = '0.0.24';
+    const VERSION = '0.0.25';
     const STORAGE_KEY = 'april_2026_bill_increase_rows_v1';
     const THEME_KEY = 'april_2026_theme';
+    const ELIGIBILITY_FLAGS_KEY = 'april_2026_eligibility_flags_v1';
 
     // Percent uplifts are stored as integer numerator/1000 (e.g. 6.9% => 1069/1000) to keep maths pence-safe.
     const SERVICE_TYPES = [
@@ -41,6 +42,8 @@
     const themeToggleBtn = document.getElementById('themeToggle');
     const categorySummaryEl = document.getElementById('categorySummary');
     const driversSummaryEl = document.getElementById('driversSummary');
+    const eligibilityPanelEl = document.getElementById('eligibilityFlags');
+    const eligibilityAssessmentEl = document.getElementById('eligibilityAssessment');
 
     const analytics = JSON.parse(localStorage.getItem('billIncreaseAnalytics') || '{}');
     analytics.imports = analytics.imports || 0;
@@ -163,6 +166,82 @@
       return /^M0/i.test(normaliseIdentifier(pin));
     }
 
+
+    const ELIGIBILITY_DEFAULT_FLAGS = {
+      cpi39Post2025: false,
+      altitudeOriginalGamma: false,
+      tncMismatchClaimed: false,
+      finalThreeMonths: false
+    };
+
+    const QUALIFYING_SERVICE_IDS = ['wlr', 'isdn', 'maintenance', 'hosting', 'leased'];
+
+    function parseDateOnly(value) {
+      if (value === null || value === undefined || value === '') return null;
+
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        const excelEpoch = Date.UTC(1899, 11, 30);
+        const millis = Math.round(value * 86400000);
+        const date = new Date(excelEpoch + millis);
+        if (Number.isNaN(date.getTime())) return null;
+        return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
+      }
+
+      const text = String(value).trim();
+      if (!text) return null;
+
+      const isoMatch = text.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if (isoMatch) {
+        const year = parseInt(isoMatch[1], 10);
+        const month = parseInt(isoMatch[2], 10);
+        const day = parseInt(isoMatch[3], 10);
+        return buildDateOnly(year, month, day);
+      }
+
+      const dmyMatch = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10);
+        const year = parseInt(dmyMatch[3], 10);
+        return buildDateOnly(year, month, day);
+      }
+
+      const asDate = new Date(text);
+      if (!Number.isNaN(asDate.getTime())) {
+        return { year: asDate.getUTCFullYear(), month: asDate.getUTCMonth() + 1, day: asDate.getUTCDate() };
+      }
+
+      return null;
+    }
+
+    function buildDateOnly(year, month, day) {
+      if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+      if (year < 1900 || year > 2200) return null;
+      if (month < 1 || month > 12) return null;
+      if (day < 1 || day > 31) return null;
+      const candidate = new Date(Date.UTC(year, month - 1, day));
+      if (
+        candidate.getUTCFullYear() !== year ||
+        candidate.getUTCMonth() !== (month - 1) ||
+        candidate.getUTCDate() !== day
+      ) {
+        return null;
+      }
+      return { year, month, day };
+    }
+
+    function dateOnlyToKey(dateOnly) {
+      if (!dateOnly) return null;
+      return (dateOnly.year * 10000) + (dateOnly.month * 100) + dateOnly.day;
+    }
+
+    function formatDateOnly(dateOnly) {
+      if (!dateOnly) return 'Unknown';
+      const dd = String(dateOnly.day).padStart(2, '0');
+      const mm = String(dateOnly.month).padStart(2, '0');
+      return `${dd}/${mm}/${dateOnly.year}`;
+    }
+
     function isSelectServiceDescription(desc) {
       const keywords = ['fraud guardian', 'complete care', 'business assurance', 'safeweb', 'free2call', 'f2c'];
       if (keywords.some((keyword) => desc.includes(keyword))) return true;
@@ -242,6 +321,8 @@
 
     function addRow(data = {}) {
       const tr = document.createElement('tr');
+      tr.dataset.startDate = data.startDate ? String(data.startDate) : '';
+
       tr.innerHTML = `
         <td class="col-move"><button type="button" class="drag-handle" aria-label="Reorder row" title="Drag to reorder">☰</button></td>
         <td><input class="cli" type="text" placeholder="0161… / CLI" value="${data.cli || ''}" /></td>
@@ -307,6 +388,7 @@
         const qtyInput = row.querySelector('.qty');
         const serviceError = row.querySelector('.serviceError');
         const priceError = row.querySelector('.priceError');
+        const startDate = row.dataset.startDate || '';
 
         const perUnitBeforePence = poundsToPence(priceInput.value);
         const qty = Math.max(1, Math.min(1000, parseInt(qtyInput.value, 10) || 1));
@@ -339,6 +421,7 @@
             qty,
             priceText: priceInput.value,
             pricePence: perUnitBeforePence,
+            startDate,
             complete: false,
             meaningful: rowHasMeaningfulData
           };
@@ -375,6 +458,7 @@
           totalBeforePence,
           totalAfterPence,
           totalDiffPence,
+          startDate,
           complete: true,
           meaningful: rowHasMeaningfulData
         };
@@ -388,7 +472,8 @@
         serviceId: row.serviceId,
         qty: row.qty,
         pricePence: Number.isInteger(row.pricePence) ? row.pricePence : null,
-        priceText: row.priceText || ''
+        priceText: row.priceText || '',
+        startDate: row.startDate || ''
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(safeRows));
     }
@@ -491,6 +576,232 @@
     }
 
 
+    function getQualifyingRows(rows) {
+      return rows.filter((row) => row.complete && QUALIFYING_SERVICE_IDS.includes(row.serviceId));
+    }
+
+    function getEligibilitySignals(rows) {
+      const completeRows = rows.filter((row) => row.complete);
+      const qualifyingRows = getQualifyingRows(completeRows);
+      const thresholdPost2014 = 20140123;
+      const thresholdPost2025 = 20250117;
+
+      const signals = {
+        hasWlr: qualifyingRows.some((row) => row.serviceId === 'wlr'),
+        hasIsdn: qualifyingRows.some((row) => row.serviceId === 'isdn'),
+        hasMaintenance: qualifyingRows.some((row) => row.serviceId === 'maintenance'),
+        hasHosting: qualifyingRows.some((row) => row.serviceId === 'hosting'),
+        hasLeased: qualifyingRows.some((row) => row.serviceId === 'leased'),
+        hasBroadband: completeRows.some((row) => row.productCategory === 'broadband' || row.serviceId === 'other'),
+        qualifyingRows,
+        qualifyingRowsPost2014: [],
+        qualifyingRowsPost2025: [],
+        qualifyingRowsWithUnknownDate: [],
+        allQualifyingRowsPreOrOn2014: false,
+        hasWlrOrIsdn: false,
+        hasLinkedBroadband: false,
+        noQualifyingRows: qualifyingRows.length === 0
+      };
+
+      signals.hasWlrOrIsdn = signals.hasWlr || signals.hasIsdn;
+      signals.hasLinkedBroadband = signals.hasWlrOrIsdn && signals.hasBroadband;
+
+      qualifyingRows.forEach((row) => {
+        const parsed = parseDateOnly(row.startDate);
+        const dateKey = dateOnlyToKey(parsed);
+        if (!dateKey) {
+          signals.qualifyingRowsWithUnknownDate.push(row);
+          return;
+        }
+        if (dateKey > thresholdPost2014) signals.qualifyingRowsPost2014.push(row);
+        if (dateKey >= thresholdPost2025) signals.qualifyingRowsPost2025.push(row);
+      });
+
+      signals.allQualifyingRowsPreOrOn2014 = qualifyingRows.length > 0
+        && signals.qualifyingRowsWithUnknownDate.length === 0
+        && signals.qualifyingRowsPost2014.length === 0;
+
+      return signals;
+    }
+
+    function summariseQualifyingIncreaseTypes(signals) {
+      const labels = [];
+      if (signals.hasWlr) labels.push('WLR');
+      if (signals.hasIsdn) labels.push('ISDN');
+      if (signals.hasMaintenance) labels.push('Maintenance');
+      if (signals.hasHosting) labels.push('Hosting');
+      if (signals.hasLeased) labels.push('Leased line');
+      return labels;
+    }
+
+    function loadEligibilityFlags() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(ELIGIBILITY_FLAGS_KEY) || '{}');
+        return {
+          ...ELIGIBILITY_DEFAULT_FLAGS,
+          ...(parsed && typeof parsed === 'object' ? parsed : {})
+        };
+      } catch (_err) {
+        return { ...ELIGIBILITY_DEFAULT_FLAGS };
+      }
+    }
+
+    function saveEligibilityFlags(flags) {
+      localStorage.setItem(ELIGIBILITY_FLAGS_KEY, JSON.stringify({ ...ELIGIBILITY_DEFAULT_FLAGS, ...flags }));
+    }
+
+    function readEligibilityFlags() {
+      if (!eligibilityPanelEl) return { ...ELIGIBILITY_DEFAULT_FLAGS };
+      return {
+        cpi39Post2025: Boolean(document.getElementById('flagCpi39Post2025')?.checked),
+        altitudeOriginalGamma: Boolean(document.getElementById('flagAltitudeOriginalGamma')?.checked),
+        tncMismatchClaimed: Boolean(document.getElementById('flagTncMismatchClaimed')?.checked),
+        finalThreeMonths: Boolean(document.getElementById('flagFinalThreeMonths')?.checked)
+      };
+    }
+
+    function getStatusMeta(status) {
+      if (status === 'likely_eligible') return { label: 'Likely eligible', className: 'eligibility-badge--likely' };
+      if (status === 'possible_eligible') return { label: 'Possibly eligible', className: 'eligibility-badge--possible' };
+      if (status === 'check_commercial') return { label: 'Check with Commercial', className: 'eligibility-badge--commercial' };
+      return { label: 'Not eligible', className: 'eligibility-badge--not' };
+    }
+
+    function buildEligibilityAssessment(rows, flags) {
+      const completeRows = rows.filter((row) => row.complete);
+      if (completeRows.length === 0) {
+        return {
+          status: 'possible_eligible',
+          headline: 'Import or add services to view eligibility guidance.',
+          reasons: ['No complete service rows are available yet.'],
+          actions: ['Import or add services, then use the manual checks to refine the guidance.'],
+          signals: getEligibilitySignals(rows)
+        };
+      }
+
+      const signals = getEligibilitySignals(rows);
+      const qualifyingTypes = summariseQualifyingIncreaseTypes(signals);
+
+      if (flags.tncMismatchClaimed) {
+        return {
+          status: 'check_commercial',
+          headline: 'Check with Commercial before advising',
+          reasons: ['Customer reports contract terms do not match the received letter. Possible T&C mismatch needs validation.'],
+          actions: ['Do not advise exit rights until Commercial confirms applicable terms and letter alignment.'],
+          signals
+        };
+      }
+
+      if (flags.cpi39Post2025) {
+        const actions = [flags.finalThreeMonths
+          ? 'If within final 3 months, raise Opp to Loyalty to explore support options.'
+          : 'Handle objections in line with contract terms and uphold charges where applicable.'];
+        return {
+          status: 'not_eligible',
+          headline: 'Not eligible based on current checks',
+          reasons: ['Customer is marked as being on post-17 Jan 2025 CPI + 3.9% terms, which do not carry exit rights for this increase in current guidance.'],
+          actions,
+          signals
+        };
+      }
+
+      if (flags.altitudeOriginalGamma) {
+        return {
+          status: 'likely_eligible',
+          headline: 'Likely eligible to exit without penalty',
+          reasons: ['Customer is marked as being on the original Altitude Gamma contract.'],
+          actions: ['Raise Opportunity for Loyalty.'],
+          signals
+        };
+      }
+
+      if (!signals.noQualifyingRows) {
+        const reasons = [];
+        if (qualifyingTypes.length) reasons.push(`${qualifyingTypes.join(', ')} price increase signal(s) detected.`);
+
+        if (signals.qualifyingRowsPost2014.length > 0) {
+          reasons.push('Qualifying services have Start Dates after 23 Jan 2014.');
+          if (signals.hasLinkedBroadband) {
+            reasons.push('Broadband services are present alongside qualifying WLR/ISDN services and may also gain the right to leave.');
+          }
+          const actions = ['Raise Opportunity for Loyalty.'];
+          if (signals.hasWlrOrIsdn) actions.push('For WLR services, quote migration to future technology where appropriate.');
+          return {
+            status: 'likely_eligible',
+            headline: 'Likely eligible to exit without penalty',
+            reasons,
+            actions,
+            signals
+          };
+        }
+
+        if (signals.qualifyingRowsWithUnknownDate.length > 0) {
+          reasons.push('Qualifying services were detected but Start Dates could not be fully confirmed.');
+          return {
+            status: 'possible_eligible',
+            headline: 'Possibly eligible - confirm before advising',
+            reasons,
+            actions: ['Confirm contract terms and dates before advising the customer.'],
+            signals
+          };
+        }
+
+        if (signals.allQualifyingRowsPreOrOn2014) {
+          reasons.push('Available Start Dates do not indicate a qualifying post-23 Jan 2014 contract.');
+          return {
+            status: 'not_eligible',
+            headline: 'Not eligible based on current checks',
+            reasons,
+            actions: ['Confirm manually if there is evidence of renewal or re-sign since the shown start date.'],
+            signals
+          };
+        }
+      }
+
+      return {
+        status: 'not_eligible',
+        headline: 'No exit-right trigger detected from imported services',
+        reasons: ['Only standard or non-qualifying increases are currently detected from imported services.'],
+        actions: [
+          flags.finalThreeMonths
+            ? 'If within final 3 months, raise Opp to Loyalty to explore support options.'
+            : 'Explain the increase and use normal retention handling if needed.'
+        ],
+        signals
+      };
+    }
+
+    function renderEligibilityAssessment(assessment) {
+      if (!eligibilityAssessmentEl) return;
+      if (!assessment) {
+        eligibilityAssessmentEl.innerHTML = '<p class="summary-empty">Import or add services to view eligibility guidance.</p>';
+        return;
+      }
+
+      const statusMeta = getStatusMeta(assessment.status);
+      const reasonsHtml = (assessment.reasons || []).map((item) => `<li>${item}</li>`).join('');
+      const actionsHtml = (assessment.actions || []).map((item) => `<li>${item}</li>`).join('');
+
+      eligibilityAssessmentEl.innerHTML = `
+        <div class="eligibility-header">
+          <span class="eligibility-badge ${statusMeta.className}">${statusMeta.label}</span>
+          <h4>${assessment.headline}</h4>
+        </div>
+        <div class="eligibility-columns">
+          <div>
+            <p class="mini-label"><strong>Reasons</strong></p>
+            <ul class="summary-list">${reasonsHtml}</ul>
+          </div>
+          <div>
+            <p class="mini-label"><strong>Next step</strong></p>
+            <ul class="summary-list">${actionsHtml}</ul>
+          </div>
+        </div>
+        <p class="eligibility-note">Guidance only, based on imported services and manual checks. Confirm contract terms before advising.</p>
+      `;
+    }
+
+
     function recalc() {
       const rows = readRows();
       let totalBefore = 0;
@@ -537,10 +848,26 @@
 
       const categorySummary = buildProductCategorySummary(rows);
       const biggestDrivers = buildBiggestDrivers(rows, categorySummary);
+      const eligibilityFlags = readEligibilityFlags();
+      saveEligibilityFlags(eligibilityFlags);
+      const eligibilityAssessment = buildEligibilityAssessment(rows, eligibilityFlags);
 
       renderRowWarnings(missingTypeCount);
       renderSummarySections(categorySummary, biggestDrivers);
-      const totals = { totalBefore, totalAfter, diff, annualDiff, cliValues, rows, missingTypeCount, categorySummary, biggestDrivers };
+      renderEligibilityAssessment(eligibilityAssessment);
+      const totals = {
+        totalBefore,
+        totalAfter,
+        diff,
+        annualDiff,
+        cliValues,
+        rows,
+        missingTypeCount,
+        categorySummary,
+        biggestDrivers,
+        eligibilityFlags,
+        eligibilityAssessment
+      };
 
       analytics.totalIncrease += diff;
       localStorage.setItem('billIncreaseAnalytics', JSON.stringify(analytics));
@@ -568,6 +895,14 @@
         '- Verify which price increase letter the customer received in Daisy Central before providing guidance.',
         '- Some customers/services may be excluded; confirm exemptions with Commercial if needed.'
       ];
+
+      const eligibility = totals.eligibilityAssessment;
+      if (eligibility) {
+        lines.push('', 'Eligibility signals (guidance only):');
+        lines.push(`- Outcome: ${eligibility.headline}`);
+        eligibility.reasons.forEach((reason) => lines.push(`- Reason: ${reason}`));
+        eligibility.actions.forEach((action) => lines.push(`- Next step: ${action}`));
+      }
 
       if (totals.cliValues.length > 0) {
         lines.push('', `Numbers/CLIs referenced: ${totals.cliValues.join(', ')}`);
@@ -605,6 +940,13 @@
         .forEach((r) => {
           lines.push(`${r.cli || '—'} – ${r.desc || 'Service'} – ${formatGBP(r.totalBeforePence)} → ${formatGBP(r.totalAfterPence)}`);
         });
+
+      const eligibility = totals.eligibilityAssessment;
+      if (eligibility) {
+        lines.push('');
+        lines.push(`Eligibility: ${eligibility.headline}`);
+        eligibility.reasons.slice(0, 3).forEach((reason) => lines.push(`- ${reason}`));
+      }
 
       lines.push('');
       lines.push('Estimate only. Contract terms may override.');
@@ -668,6 +1010,10 @@
         csvRows.push(`# Customer: ${importedCompanyName || 'Unknown'} | Account: ${importedAccountNumber || 'Unknown'}`);
       }
       csvRows.push(`# Exported: ${new Date().toLocaleString('en-GB')}`);
+      if (result?.eligibilityAssessment) {
+        csvRows.push(`# Eligibility: ${result.eligibilityAssessment.headline}`);
+        csvRows.push(`# Eligibility reasons: ${(result.eligibilityAssessment.reasons || []).slice(0, 2).join(' | ') || 'None'}`);
+      }
 
       const headers = [
         'Number/CLI',
@@ -1106,6 +1452,33 @@
 
       cursorY -= driversHeight + 16;
 
+      const eligibility = totals.eligibilityAssessment;
+      if (eligibility) {
+        const eligibilityLines = [
+          `Outcome: ${eligibility.headline}`,
+          ...((eligibility.reasons || []).map((reason) => `Reason: ${reason}`)),
+          ...((eligibility.actions || []).map((action) => `Next step: ${action}`)),
+          'Guidance only. Confirm contract terms and dates before advising where relevant.'
+        ];
+        const wrappedEligibility = eligibilityLines
+          .map((line) => measureWrappedLines(line, bodyFont, smallSize, contentWidth - 16, 4))
+          .flat();
+        const eligibilityHeight = 24 + (wrappedEligibility.length * 10);
+
+        ensureSpace(eligibilityHeight + 14);
+        drawSectionHeading('Eligibility signals', cursorY - sectionTitleSize);
+        cursorY -= sectionTitleSize + 8;
+        drawCard(margin, cursorY - eligibilityHeight, contentWidth, eligibilityHeight, rgb(0.98, 0.985, 0.995));
+
+        let eligibilityY = cursorY - 14;
+        wrappedEligibility.forEach((line) => {
+          drawTextCell(line, margin + 8, eligibilityY, { size: smallSize });
+          eligibilityY -= 10;
+        });
+
+        cursorY -= eligibilityHeight + 16;
+      }
+
       drawSectionHeading('Service lines', cursorY - sectionTitleSize);
       cursorY -= sectionTitleSize + 8;
       drawTableHeader();
@@ -1213,6 +1586,22 @@
       priceInput.value = formatGBP(parsed);
     }
 
+
+    function applyEligibilityFlagsToUI(flags) {
+      if (!eligibilityPanelEl) return;
+      const safeFlags = { ...ELIGIBILITY_DEFAULT_FLAGS, ...flags };
+      const map = {
+        flagCpi39Post2025: safeFlags.cpi39Post2025,
+        flagAltitudeOriginalGamma: safeFlags.altitudeOriginalGamma,
+        flagTncMismatchClaimed: safeFlags.tncMismatchClaimed,
+        flagFinalThreeMonths: safeFlags.finalThreeMonths
+      };
+      Object.entries(map).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = Boolean(value);
+      });
+    }
+
     function loadRowsFromStorage() {
       let storedRows = [];
       try {
@@ -1234,7 +1623,8 @@
           serviceId: row.serviceId || '',
           qty: row.qty || 1,
           pricePence: Number.isInteger(row.pricePence) ? row.pricePence : null,
-          priceText: row.priceText || ''
+          priceText: row.priceText || '',
+          startDate: row.startDate || ''
         });
       });
     }
@@ -1395,6 +1785,7 @@
         const cli = normalisePIN(cliRaw);
 
         const desc = String(serviceName || '').trim();
+        const startDate = String(pick(row, ['StartDate', 'Start Date']) || '').trim();
 
         const qtyRaw = pick(row, ['Quantity', 'Qty', 'QTY']);
         const qty = Math.max(1, parseInt(qtyRaw, 10) || 1);
@@ -1418,7 +1809,8 @@
           desc,
           qty,
           pricePence,
-          serviceId: detectServiceType(desc, cli)
+          serviceId: detectServiceType(desc, cli),
+          startDate
         });
 
         importedCount++;
@@ -1489,6 +1881,8 @@
     document.getElementById('resetBtn').addEventListener('click', () => {
       rowsEl.innerHTML = '';
       localStorage.removeItem(STORAGE_KEY);
+      saveEligibilityFlags(ELIGIBILITY_DEFAULT_FLAGS);
+      applyEligibilityFlagsToUI(ELIGIBILITY_DEFAULT_FLAGS);
       addRow();
       recalc();
     });
@@ -1571,7 +1965,8 @@
           serviceId: tr.querySelector('.serviceType').value,
           qty: tr.querySelector('.qty').value,
           pricePence: poundsToPence(tr.querySelector('.price').value),
-          priceText: tr.querySelector('.price').value
+          priceText: tr.querySelector('.price').value,
+          startDate: tr.dataset.startDate || ''
         });
         recalc();
         return;
@@ -1594,6 +1989,14 @@
         const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
         localStorage.setItem(THEME_KEY, nextTheme);
         applyTheme(nextTheme);
+      });
+    }
+
+    applyEligibilityFlagsToUI(loadEligibilityFlags());
+
+    if (eligibilityPanelEl) {
+      eligibilityPanelEl.addEventListener('change', () => {
+        recalc();
       });
     }
 

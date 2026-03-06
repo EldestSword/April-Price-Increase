@@ -68,6 +68,20 @@
           </article>
         </div>
       </section>
+      <section class="eligibility-panel" aria-live="polite">
+        <h3>Exit rights / eligibility signals</h3>
+        <div class="eligibility-grid">
+          <div id="eligibilityFlags" class="eligibility-controls">
+            <label><input id="flagCpi39Post2025" type="checkbox" /> Customer is on post-17 Jan 2025 CPI + 3.9% terms</label>
+            <label><input id="flagAltitudeOriginalGamma" type="checkbox" /> Customer is on original Altitude Gamma contract</label>
+            <label><input id="flagTncMismatchClaimed" type="checkbox" /> Customer says their contract terms do not match the letter</label>
+            <label><input id="flagFinalThreeMonths" type="checkbox" /> Customer is within final 3 months of contract</label>
+          </div>
+          <div id="eligibilityAssessment" class="eligibility-output">
+            <p class="summary-empty">Import or add services to view eligibility guidance. Manual checks can then refine the outcome.</p>
+          </div>
+        </div>
+      </section>
       <div class="toolbar">
         <button id="copyExplanationBtn" type="button">Copy explanation</button>
         <button id="copyTableBtn" type="button">Copy table</button>

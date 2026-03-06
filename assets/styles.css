@@ -744,3 +744,111 @@ footer div {
     letter-spacing: 0.03em;
   }
 }
+
+.eligibility-panel {
+  margin-top: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  padding: 0.7rem;
+}
+
+.eligibility-panel h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}
+
+.eligibility-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 0.7rem;
+}
+
+.eligibility-controls,
+.eligibility-output {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--surface-soft) 85%, transparent);
+  padding: 0.65rem;
+}
+
+.eligibility-controls {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.eligibility-controls label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  font-size: 0.84rem;
+  color: var(--text);
+}
+
+.eligibility-controls input[type="checkbox"] {
+  margin-top: 0.15rem;
+}
+
+.eligibility-header {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.eligibility-header h4 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.eligibility-badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.73rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.eligibility-badge--likely {
+  background: var(--diff-pos-bg);
+  color: var(--diff-pos-text);
+  border-color: color-mix(in oklab, var(--diff-pos-text) 35%, var(--border));
+}
+
+.eligibility-badge--possible {
+  background: color-mix(in oklab, #f9b703 20%, var(--surface));
+  color: color-mix(in oklab, var(--text) 75%, #6b4700);
+  border-color: color-mix(in oklab, #f9b703 48%, var(--border));
+}
+
+.eligibility-badge--not {
+  background: var(--diff-neg-bg);
+  color: var(--diff-neg-text);
+  border-color: color-mix(in oklab, var(--diff-neg-text) 35%, var(--border));
+}
+
+.eligibility-badge--commercial {
+  background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--border));
+}
+
+.eligibility-columns {
+  margin-top: 0.55rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.eligibility-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.79rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 1140px) {
+  .eligibility-grid,
+  .eligibility-columns {
+    grid-template-columns: 1fr;
+  }
+}

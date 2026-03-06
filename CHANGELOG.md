@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.25] - 2026-03-06
+### Added
+- Exit rights / eligibility signals panel with automatic qualifying-service detection and manual contract-status checks.
+- StartDate-aware eligibility guidance using imported LSR data.
+- Eligibility summary in explanation copy, CRM notes, and PDF export.
+
+### Changed
+- Recalc flow now derives eligibility guidance alongside totals and service summaries.
+
+### Fixed
+- None.
+
+### Removed
+- None.
+
 ## [0.0.24] - 2026-03-06
 ### Added
 - None.
